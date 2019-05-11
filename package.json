@@ -1,0 +1,14 @@
+{
+  "name": "botlink-xrd-sdk",
+  "version": "0.1.0",
+  "description": "Components for interacting with Botlink's XRD services",
+  "main": "index.js",
+  "repository": "https://github.com/botlink/botlink-xrd-sdk",
+  "author": "Alex Kube <alexander.j.kube@gmail.com>",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "google-protobuf": "^3.8.0-rc.1",
+    "socket.io-client": "^2.2.0"
+  }
+}
