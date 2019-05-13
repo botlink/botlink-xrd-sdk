@@ -1,22 +1,20 @@
 /*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
-"use strict";
-
-var $protobuf = require("protobufjs/minimal");
+import * as $protobuf from "protobufjs/minimal";
 
 // Common aliases
-var $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util;
+const $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util;
 
 // Exported root namespace
-var $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
+const $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
 
-$root.messages = (function() {
+export const messages = $root.messages = (() => {
 
     /**
      * Namespace messages.
      * @exports messages
      * @namespace
      */
-    var messages = {};
+    const messages = {};
 
     messages.AutopilotMessage = (function() {
 
@@ -37,7 +35,7 @@ $root.messages = (function() {
          */
         function AutopilotMessage(properties) {
             if (properties)
-                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                     if (properties[keys[i]] != null)
                         this[keys[i]] = properties[keys[i]];
         }
@@ -105,9 +103,9 @@ $root.messages = (function() {
         AutopilotMessage.decode = function decode(reader, length) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.messages.AutopilotMessage();
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.messages.AutopilotMessage();
             while (reader.pos < end) {
-                var tag = reader.uint32();
+                let tag = reader.uint32();
                 switch (tag >>> 3) {
                 case 1:
                     message.Payload = reader.bytes();
@@ -165,7 +163,7 @@ $root.messages = (function() {
         AutopilotMessage.fromObject = function fromObject(object) {
             if (object instanceof $root.messages.AutopilotMessage)
                 return object;
-            var message = new $root.messages.AutopilotMessage();
+            let message = new $root.messages.AutopilotMessage();
             if (object.Payload != null)
                 if (typeof object.Payload === "string")
                     $util.base64.decode(object.Payload, message.Payload = $util.newBuffer($util.base64.length(object.Payload)), 0);
@@ -186,7 +184,7 @@ $root.messages = (function() {
         AutopilotMessage.toObject = function toObject(message, options) {
             if (!options)
                 options = {};
-            var object = {};
+            let object = {};
             if (options.defaults)
                 if (options.bytes === String)
                     object.Payload = "";
@@ -235,7 +233,7 @@ $root.messages = (function() {
         function AutopilotMessageList(properties) {
             this.Messages = [];
             if (properties)
-                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                     if (properties[keys[i]] != null)
                         this[keys[i]] = properties[keys[i]];
         }
@@ -282,7 +280,7 @@ $root.messages = (function() {
                 writer = $Writer.create();
             $root.messages.DateTimeOffsetSurrogate.encode(message.GeneratedTime, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
             if (message.Messages != null && message.Messages.length)
-                for (var i = 0; i < message.Messages.length; ++i)
+                for (let i = 0; i < message.Messages.length; ++i)
                     $root.messages.AutopilotMessage.encode(message.Messages[i], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
             return writer;
         };
@@ -314,9 +312,9 @@ $root.messages = (function() {
         AutopilotMessageList.decode = function decode(reader, length) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.messages.AutopilotMessageList();
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.messages.AutopilotMessageList();
             while (reader.pos < end) {
-                var tag = reader.uint32();
+                let tag = reader.uint32();
                 switch (tag >>> 3) {
                 case 1:
                     message.GeneratedTime = $root.messages.DateTimeOffsetSurrogate.decode(reader, reader.uint32());
@@ -364,15 +362,15 @@ $root.messages = (function() {
             if (typeof message !== "object" || message === null)
                 return "object expected";
             {
-                var error = $root.messages.DateTimeOffsetSurrogate.verify(message.GeneratedTime);
+                let error = $root.messages.DateTimeOffsetSurrogate.verify(message.GeneratedTime);
                 if (error)
                     return "GeneratedTime." + error;
             }
             if (message.Messages != null && message.hasOwnProperty("Messages")) {
                 if (!Array.isArray(message.Messages))
                     return "Messages: array expected";
-                for (var i = 0; i < message.Messages.length; ++i) {
-                    var error = $root.messages.AutopilotMessage.verify(message.Messages[i]);
+                for (let i = 0; i < message.Messages.length; ++i) {
+                    let error = $root.messages.AutopilotMessage.verify(message.Messages[i]);
                     if (error)
                         return "Messages." + error;
                 }
@@ -391,7 +389,7 @@ $root.messages = (function() {
         AutopilotMessageList.fromObject = function fromObject(object) {
             if (object instanceof $root.messages.AutopilotMessageList)
                 return object;
-            var message = new $root.messages.AutopilotMessageList();
+            let message = new $root.messages.AutopilotMessageList();
             if (object.GeneratedTime != null) {
                 if (typeof object.GeneratedTime !== "object")
                     throw TypeError(".messages.AutopilotMessageList.GeneratedTime: object expected");
@@ -401,7 +399,7 @@ $root.messages = (function() {
                 if (!Array.isArray(object.Messages))
                     throw TypeError(".messages.AutopilotMessageList.Messages: array expected");
                 message.Messages = [];
-                for (var i = 0; i < object.Messages.length; ++i) {
+                for (let i = 0; i < object.Messages.length; ++i) {
                     if (typeof object.Messages[i] !== "object")
                         throw TypeError(".messages.AutopilotMessageList.Messages: object expected");
                     message.Messages[i] = $root.messages.AutopilotMessage.fromObject(object.Messages[i]);
@@ -422,7 +420,7 @@ $root.messages = (function() {
         AutopilotMessageList.toObject = function toObject(message, options) {
             if (!options)
                 options = {};
-            var object = {};
+            let object = {};
             if (options.arrays || options.defaults)
                 object.Messages = [];
             if (options.defaults)
@@ -431,7 +429,7 @@ $root.messages = (function() {
                 object.GeneratedTime = $root.messages.DateTimeOffsetSurrogate.toObject(message.GeneratedTime, options);
             if (message.Messages && message.Messages.length) {
                 object.Messages = [];
-                for (var j = 0; j < message.Messages.length; ++j)
+                for (let j = 0; j < message.Messages.length; ++j)
                     object.Messages[j] = $root.messages.AutopilotMessage.toObject(message.Messages[j], options);
             }
             return object;
@@ -470,7 +468,7 @@ $root.messages = (function() {
          */
         function DateTimeOffsetSurrogate(properties) {
             if (properties)
-                for (var keys = Object.keys(properties), i = 0; i < keys.length; ++i)
+                for (let keys = Object.keys(properties), i = 0; i < keys.length; ++i)
                     if (properties[keys[i]] != null)
                         this[keys[i]] = properties[keys[i]];
         }
@@ -539,9 +537,9 @@ $root.messages = (function() {
         DateTimeOffsetSurrogate.decode = function decode(reader, length) {
             if (!(reader instanceof $Reader))
                 reader = $Reader.create(reader);
-            var end = length === undefined ? reader.len : reader.pos + length, message = new $root.messages.DateTimeOffsetSurrogate();
+            let end = length === undefined ? reader.len : reader.pos + length, message = new $root.messages.DateTimeOffsetSurrogate();
             while (reader.pos < end) {
-                var tag = reader.uint32();
+                let tag = reader.uint32();
                 switch (tag >>> 3) {
                 case 1:
                     message.DateTimeString = reader.string();
@@ -598,7 +596,7 @@ $root.messages = (function() {
         DateTimeOffsetSurrogate.fromObject = function fromObject(object) {
             if (object instanceof $root.messages.DateTimeOffsetSurrogate)
                 return object;
-            var message = new $root.messages.DateTimeOffsetSurrogate();
+            let message = new $root.messages.DateTimeOffsetSurrogate();
             if (object.DateTimeString != null)
                 message.DateTimeString = String(object.DateTimeString);
             return message;
@@ -616,7 +614,7 @@ $root.messages = (function() {
         DateTimeOffsetSurrogate.toObject = function toObject(message, options) {
             if (!options)
                 options = {};
-            var object = {};
+            let object = {};
             if (options.defaults)
                 object.DateTimeString = "";
             if (message.DateTimeString != null && message.hasOwnProperty("DateTimeString"))
@@ -641,4 +639,4 @@ $root.messages = (function() {
     return messages;
 })();
 
-module.exports = $root;
+export { $root as default };
