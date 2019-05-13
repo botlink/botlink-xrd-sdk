@@ -10,7 +10,7 @@ export interface XRDSocketOptions {
   credentials: Credentials
 }
 
-export default class XRDSocket extends Duplex {
+export class XRDSocket extends Duplex {
   private socket?: SocketIOClient.Socket
   private coder: MessageCoder = new MessageCoder()
   // TODO: Limit internal storage usage
