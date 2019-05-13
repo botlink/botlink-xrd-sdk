@@ -57,7 +57,7 @@ var XRDApi = /** @class */ (function (_super) {
         return _super !== null && _super.apply(this, arguments) || this;
     }
     XRDApi.prototype.list = function () {
-        return node_fetch_1.default(xrdsPath(this.credentials.user.id), {
+        return node_fetch_1.default(urls.API + xrdsPath(this.credentials.user.id), {
             headers: [
                 ['Authorization', this.credentials.token]
             ]
