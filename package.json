@@ -2,7 +2,7 @@
   "name": "botlink-xrd-sdk",
   "version": "0.1.0",
   "description": "Components for interacting with Botlink's XRD services",
-  "main": "index.js",
+  "main": "dist/index.js",
   "repository": "https://github.com/botlink/botlink-xrd-sdk",
   "author": "Alex Kube <alexander.j.kube@gmail.com>",
   "license": "MIT",
@@ -18,5 +18,8 @@
     "@types/socket.io-client": "^1.4.32",
     "@types/url-template": "^2.0.28",
     "typescript": "^3.4.5"
+  },
+  "scripts": {
+    "build": "tsc"
   }
 }
