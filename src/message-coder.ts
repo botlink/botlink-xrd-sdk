@@ -1,5 +1,4 @@
 import { messages } from './apmlist'
-import _ from 'lodash'
 
 export default class MessageCoder {
   encode(items: Array<{ chunk: any, encoding: string }>): string {
@@ -29,7 +28,7 @@ export default class MessageCoder {
     let encodedMessages = list.Messages
     let decodedMessages: Array<Buffer> = []
 
-    _.each(encodedMessages, (message) => {
+    encodedMessages.forEach((message) => {
       let content = message.Payload
       decodedMessages.push(Buffer.from(content))
     })
