@@ -45,7 +45,7 @@ export class Api {
 
 export class XRDApi extends Api {
   list() : Promise<Array<XRD>> {
-    return fetch(xrdsPath(this.credentials.user.id), {
+    return fetch(urls.API + xrdsPath(this.credentials.user.id), {
         headers: [
             ['Authorization', this.credentials.token]
         ]
