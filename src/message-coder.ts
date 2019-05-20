@@ -10,10 +10,13 @@ export default class MessageCoder {
       } = item
 
       if(chunk instanceof Buffer) {
+        console.log('Encoding from Buffer')
         list.Messages.push(new messages.AutopilotMessage({Payload: chunk}))
       } else if(chunk instanceof Uint8Array) {
+        console.log('Encoding from Uint8Array')
         list.Messages.push(new messages.AutopilotMessage({Payload: Buffer.from(chunk)}))
       } else {
+        console.log('Encoding from string')
         // TODO: Probably not guaranteed a string past this point?
         list.Messages.push(new messages.AutopilotMessage({Payload: Buffer.from(chunk, <BufferEncoding>encoding)}))
       }
