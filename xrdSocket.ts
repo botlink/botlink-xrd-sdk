@@ -59,6 +59,8 @@ export class XRDSocket extends Duplex {
       this.emit('error', error)
     })
 
+    let startedReading = false
+
     this.socket.on('onReceiveAutopilotMessage', (data: any) => {
       let messages = this.coder.decode(new Buffer(data, 'base64'))
 
@@ -66,6 +68,11 @@ export class XRDSocket extends Duplex {
         messages.forEach((message) => {
           this.messageBuffers.push(message)
         })
+
+        if(!startedReading) {
+          this.read(0)
+          startedReading = true
+        }
       }
     })
   }

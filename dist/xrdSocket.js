@@ -62,12 +62,17 @@ var XRDSocket = /** @class */ (function (_super) {
         this.socket.on('error', function (error) {
             _this.emit('error', error);
         });
+        var startedReading = false;
         this.socket.on('onReceiveAutopilotMessage', function (data) {
             var messages = _this.coder.decode(new Buffer(data, 'base64'));
             if (messages) {
                 messages.forEach(function (message) {
                     _this.messageBuffers.push(message);
                 });
+                if (!startedReading) {
+                    _this.read(0);
+                    startedReading = true;
+                }
             }
         });
     };
