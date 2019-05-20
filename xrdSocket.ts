@@ -61,6 +61,7 @@ export class XRDSocket extends Duplex {
     })
 
     this.socket.on('onReceiveAutopilotMessage', (data: any) => {
+      console.log(`Received data ${data}`)
       let messages = this.coder.decode(data)
 
       if (messages) {
