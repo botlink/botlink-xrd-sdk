@@ -38,6 +38,7 @@ var XRDSocket = /** @class */ (function (_super) {
         _this.bytesWritten = 0;
         _this.pending = true;
         _this.connecting = false;
+        _this.wantsMoreBytes = true;
         _this.xrd = options.xrd;
         _this.token = options.credentials.token;
         _this.messageBuffers = [];
@@ -62,30 +63,28 @@ var XRDSocket = /** @class */ (function (_super) {
         this.socket.on('error', function (error) {
             _this.emit('error', error);
         });
-        var startedReading = false;
         this.socket.on('onReceiveAutopilotMessage', function (data) {
             var messages = _this.coder.decode(new Buffer(data, 'base64'));
             if (messages) {
                 messages.forEach(function (message) {
-                    _this.messageBuffers.push(message);
+                    if (_this.wantsMoreBytes) {
+                        _this.wantsMoreBytes = _this.push(message);
+                    }
                 });
-                if (!startedReading) {
-                    _this.read(0);
-                    startedReading = true;
-                }
             }
         });
     };
     XRDSocket.prototype._read = function (size) {
         console.log('_read');
-        while (this.messageBuffers.length > 0) {
-            console.log('Dequeueing message');
-            var chunk = this.messageBuffers.splice(0)[0];
-            this.bytesRead += chunk.byteLength;
-            if (!this.push(chunk)) {
-                break;
-            }
-        }
+        this.wantsMoreBytes = true;
+        // while(this.messageBuffers.length > 0) {
+        //   console.log('Dequeueing message')
+        //   let chunk = this.messageBuffers.splice(0)[0]
+        //   this.bytesRead += chunk.byteLength
+        //   if(!this.push(chunk)) {
+        //     break
+        //   }
+        // }
     };
     XRDSocket.prototype._write = function (chunk, encoding, callback) {
         if (!this.socket) {

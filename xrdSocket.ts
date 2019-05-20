@@ -24,6 +24,7 @@ export class XRDSocket extends Duplex {
   connecting: boolean = false
 
   remoteAddress?: string
+  private wantsMoreBytes: boolean = true
 
   constructor(options: XRDSocketOptions) {
     super({
@@ -59,34 +60,30 @@ export class XRDSocket extends Duplex {
       this.emit('error', error)
     })
 
-    let startedReading = false
-
     this.socket.on('onReceiveAutopilotMessage', (data: any) => {
       let messages = this.coder.decode(new Buffer(data, 'base64'))
 
       if (messages) {
         messages.forEach((message) => {
-          this.messageBuffers.push(message)
+          if(this.wantsMoreBytes) {
+            this.wantsMoreBytes = this.push(message)
+          }
         })
-
-        if(!startedReading) {
-          this.read(0)
-          startedReading = true
-        }
       }
     })
   }
   
   _read(size: number) {
     console.log('_read')
-    while(this.messageBuffers.length > 0) {
-      console.log('Dequeueing message')
-      let chunk = this.messageBuffers.splice(0)[0]
-      this.bytesRead += chunk.byteLength
-      if(!this.push(chunk)) {
-        break
-      }
-    }
+    this.wantsMoreBytes = true
+    // while(this.messageBuffers.length > 0) {
+    //   console.log('Dequeueing message')
+    //   let chunk = this.messageBuffers.splice(0)[0]
+    //   this.bytesRead += chunk.byteLength
+    //   if(!this.push(chunk)) {
+    //     break
+    //   }
+    // }
   }
 
   _write(chunk: (string | Buffer | Uint8Array), encoding: string, callback: Function) {
