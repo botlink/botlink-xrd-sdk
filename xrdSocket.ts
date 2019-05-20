@@ -113,7 +113,7 @@ export class XRDSocket extends Duplex {
     this.bytesWritten += bytes64.length
 
     if(this.socket) {
-      this.socket.emit('sendAutopilotMessageToBotBox', bytes64)
+      this.socket.emit('sendAutopilotMessageToBotBox', this.xrd.id, bytes64)
     }
   }
 
