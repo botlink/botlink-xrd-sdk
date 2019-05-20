@@ -22,6 +22,7 @@ var MessageCoder = /** @class */ (function () {
         return Buffer.from(apmlist_1.messages.AutopilotMessageList.encode(list).finish()).toString('base64');
     };
     MessageCoder.prototype.decode = function (data) {
+        console.log("Decoding " + data.byteLength + " bytes");
         var list = apmlist_1.messages.AutopilotMessageList.decode(data);
         var encodedMessages = list.Messages;
         var decodedMessages = [];

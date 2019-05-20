@@ -23,6 +23,7 @@ export default class MessageCoder {
   }
 
   decode(data: Buffer) {
+    console.log(`Decoding ${data.byteLength} bytes`)
     const list = messages.AutopilotMessageList.decode(data)
 
     let encodedMessages = list.Messages
