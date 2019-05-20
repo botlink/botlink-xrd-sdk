@@ -27,7 +27,6 @@ export class XRDSocket extends Duplex {
 
   constructor(options: XRDSocketOptions) {
     super({
-      readableObjectMode: true,
       writableObjectMode: true
     })
 
@@ -72,6 +71,7 @@ export class XRDSocket extends Duplex {
   }
   
   _read(size: number) {
+    console.log('_read')
     while(this.messageBuffers.length > 0) {
       console.log('Dequeueing message')
       let chunk = this.messageBuffers.splice(0)[0]

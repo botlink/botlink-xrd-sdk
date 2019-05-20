@@ -31,7 +31,6 @@ var XRDSocket = /** @class */ (function (_super) {
     __extends(XRDSocket, _super);
     function XRDSocket(options) {
         var _this = _super.call(this, {
-            readableObjectMode: true,
             writableObjectMode: true
         }) || this;
         _this.coder = new message_coder_1.default();
@@ -73,6 +72,7 @@ var XRDSocket = /** @class */ (function (_super) {
         });
     };
     XRDSocket.prototype._read = function (size) {
+        console.log('_read');
         while (this.messageBuffers.length > 0) {
             console.log('Dequeueing message');
             var chunk = this.messageBuffers.splice(0)[0];
