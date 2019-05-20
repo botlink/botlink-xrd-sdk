@@ -68,6 +68,7 @@ var XRDSocket = /** @class */ (function (_super) {
             var messages = _this.coder.decode(new Buffer(data, 'base64'));
             if (messages) {
                 messages.forEach(function (message) {
+                    console.log('Enqueing message');
                     _this.messageBuffers.push(message);
                 });
             }
@@ -75,6 +76,7 @@ var XRDSocket = /** @class */ (function (_super) {
     };
     XRDSocket.prototype._read = function (size) {
         while (this.messageBuffers.length > 0) {
+            console.log('Dequeueing message');
             var chunk = this.messageBuffers.splice(0)[0];
             this.bytesRead += chunk.byteLength;
             if (!this.push(chunk)) {

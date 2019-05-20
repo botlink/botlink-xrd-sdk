@@ -67,6 +67,7 @@ export class XRDSocket extends Duplex {
 
       if (messages) {
         messages.forEach((message) => {
+          console.log('Enqueing message')
           this.messageBuffers.push(message)
         })
       }
@@ -75,6 +76,7 @@ export class XRDSocket extends Duplex {
   
   _read(size: number) {
     while(this.messageBuffers.length > 0) {
+      console.log('Dequeueing message')
       let chunk = this.messageBuffers.splice(0)[0]
       this.bytesRead += chunk.byteLength
       if(!this.push(chunk)) {
