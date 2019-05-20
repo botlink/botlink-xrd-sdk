@@ -108,6 +108,7 @@ export class XRDSocket extends Duplex {
   }
 
   __toXRD(bytes64: string) {
+    console.log('__toXRD')
     this.bytesWritten += bytes64.length
 
     if(this.socket) {

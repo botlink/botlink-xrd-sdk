@@ -101,6 +101,7 @@ var XRDSocket = /** @class */ (function (_super) {
         callback();
     };
     XRDSocket.prototype.__toXRD = function (bytes64) {
+        console.log('__toXRD');
         this.bytesWritten += bytes64.length;
         if (this.socket) {
             this.socket.emit('sendAutopilotMessageToBotBox', bytes64);
