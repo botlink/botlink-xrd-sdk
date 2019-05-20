@@ -65,7 +65,7 @@ var XRDSocket = /** @class */ (function (_super) {
         });
         this.socket.on('onReceiveAutopilotMessage', function (data) {
             console.log("Received data " + data);
-            var messages = _this.coder.decode(data);
+            var messages = _this.coder.decode(new Buffer(data, 'base64'));
             if (messages) {
                 messages.forEach(function (message) {
                     _this.messageBuffers.push(message);
