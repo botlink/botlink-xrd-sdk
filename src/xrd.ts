@@ -1,4 +1,5 @@
 export interface XRD {
     id: number,
-    hardwareId: string
+    hardwareId: string,
+    name: string
 }

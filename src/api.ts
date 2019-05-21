@@ -50,7 +50,13 @@ export class XRDApi extends Api {
             ['Authorization', this.credentials.token]
         ]
     }).then((response) => response.json()).then((body) => {
-      return (<Array<XRD>>body)
+      return <Array<XRD>>body.map((xrd: any) => {
+        return { 
+          id: xrd.id,
+          hardwareId: xrd.hardwareId,
+          name: xrd.name || xrd.emei
+        }
+      })
     })
   }
 }
