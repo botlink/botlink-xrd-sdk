@@ -1,5 +1,5 @@
 import io from 'socket.io-client'
-import MessageCoder from './src/message-coder'
+import MessageCoder from './message-coder'
 import { XRD } from './xrd';
 import { Credentials } from './api';
 import * as urls from './urls'

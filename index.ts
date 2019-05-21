@@ -1,3 +1,3 @@
-export * from './api'
-export * from './xrdSocket'
-export * from './xrd'
+export * from './src/api'
+export * from './src/xrdSocket'
+export * from './src/xrd'
