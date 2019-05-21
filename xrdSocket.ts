@@ -14,7 +14,6 @@ export class XRDSocket extends Duplex {
   private socket?: SocketIOClient.Socket
   private coder: MessageCoder = new MessageCoder()
   // TODO: Limit internal storage usage
-  private messageBuffers: Array<Buffer>
   private token: string 
   readonly xrd: XRD
   bytesRead: number = 0
@@ -24,7 +23,7 @@ export class XRDSocket extends Duplex {
   connecting: boolean = false
 
   remoteAddress?: string
-  private wantsMoreBytes: boolean = true
+  private readyForBytes: boolean = true
 
   constructor(options: XRDSocketOptions) {
     super({
@@ -33,7 +32,6 @@ export class XRDSocket extends Duplex {
 
     this.xrd = options.xrd
     this.token = options.credentials.token
-    this.messageBuffers = []
   }
 
   connect(callback?: Function) {
@@ -65,8 +63,8 @@ export class XRDSocket extends Duplex {
 
       if (messages) {
         messages.forEach((message) => {
-          if(this.wantsMoreBytes) {
-            this.wantsMoreBytes = this.push(message)
+          if(this.readyForBytes) {
+            this.readyForBytes = this.push(message)
           }
         })
       }
@@ -74,16 +72,7 @@ export class XRDSocket extends Duplex {
   }
   
   _read(size: number) {
-    console.log('_read')
-    this.wantsMoreBytes = true
-    // while(this.messageBuffers.length > 0) {
-    //   console.log('Dequeueing message')
-    //   let chunk = this.messageBuffers.splice(0)[0]
-    //   this.bytesRead += chunk.byteLength
-    //   if(!this.push(chunk)) {
-    //     break
-    //   }
-    // }
+    this.readyForBytes = true
   }
 
   _write(chunk: (string | Buffer | Uint8Array), encoding: string, callback: Function) {
@@ -109,7 +98,6 @@ export class XRDSocket extends Duplex {
   }
 
   __toXRD(bytes64: string) {
-    console.log('__toXRD')
     this.bytesWritten += bytes64.length
 
     if(this.socket) {

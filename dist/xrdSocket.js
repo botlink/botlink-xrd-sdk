@@ -38,10 +38,9 @@ var XRDSocket = /** @class */ (function (_super) {
         _this.bytesWritten = 0;
         _this.pending = true;
         _this.connecting = false;
-        _this.wantsMoreBytes = true;
+        _this.readyForBytes = true;
         _this.xrd = options.xrd;
         _this.token = options.credentials.token;
-        _this.messageBuffers = [];
         return _this;
     }
     XRDSocket.prototype.connect = function (callback) {
@@ -67,24 +66,15 @@ var XRDSocket = /** @class */ (function (_super) {
             var messages = _this.coder.decode(new Buffer(data, 'base64'));
             if (messages) {
                 messages.forEach(function (message) {
-                    if (_this.wantsMoreBytes) {
-                        _this.wantsMoreBytes = _this.push(message);
+                    if (_this.readyForBytes) {
+                        _this.readyForBytes = _this.push(message);
                     }
                 });
             }
         });
     };
     XRDSocket.prototype._read = function (size) {
-        console.log('_read');
-        this.wantsMoreBytes = true;
-        // while(this.messageBuffers.length > 0) {
-        //   console.log('Dequeueing message')
-        //   let chunk = this.messageBuffers.splice(0)[0]
-        //   this.bytesRead += chunk.byteLength
-        //   if(!this.push(chunk)) {
-        //     break
-        //   }
-        // }
+        this.readyForBytes = true;
     };
     XRDSocket.prototype._write = function (chunk, encoding, callback) {
         if (!this.socket) {
@@ -103,7 +93,6 @@ var XRDSocket = /** @class */ (function (_super) {
         callback();
     };
     XRDSocket.prototype.__toXRD = function (bytes64) {
-        console.log('__toXRD');
         this.bytesWritten += bytes64.length;
         if (this.socket) {
             this.socket.emit('sendAutopilotMessageToBotBox', this.xrd.id, bytes64);
