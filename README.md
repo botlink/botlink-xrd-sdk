@@ -22,8 +22,6 @@ npm install --save git+ssh://git@github.com/botlink/botlink-xrd-sdk.git
 This package exposes 3 components for interacting with Botlink's XRD services --
 `auth`, `XRDApi`, and `XRDSocket`.
 
-There is a complete [example server](examples/server.js) application in the examples directory.
-
 ### auth
 
 The `auth` component allows you to retrieve service tokens for use with the
