@@ -1,2 +1,2 @@
-export const API: string = process.env.BOTLINK_API_URL || ''
-export const C3: string = process.env.BOTLINK_C3_URL || ''
+export const API: string = "https://api.botlink.com"
+export const C3: string = "https://c3.botlink.com/flight"
