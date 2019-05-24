@@ -20,6 +20,6 @@
     "typescript": "^3.4.5"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "rm -r dist/ && tsc"
   }
 }
