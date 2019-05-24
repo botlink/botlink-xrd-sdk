@@ -1,4 +1,4 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.API = process.env.BOTLINK_API_URL || '';
-exports.C3 = process.env.BOTLINK_C3_URL || '';
+exports.API = "https://api.botlink.com";
+exports.C3 = "https://c3.botlink.com/flight";
