@@ -98,7 +98,7 @@ export class XRDSocket extends Duplex {
   }
 
   _write(chunk: (string | Buffer | Uint8Array), encoding: string, callback: Function) {
-    if(!this.socket || this.pending || this.connecting) {
+    if(!this.socket) {
       return callback(new Error('No connection to XRD'))
     }
 
@@ -109,7 +109,7 @@ export class XRDSocket extends Duplex {
   }
 
   _writev(items: Array<{chunk: any, encoding: string}>, callback: Function) {
-    if(!this.socket || this.pending || this.connecting) {
+    if(!this.socket) {
       return callback(new Error('No connection to XRD'))
     }
     
