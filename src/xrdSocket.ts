@@ -45,6 +45,12 @@ export class XRDSocket extends Duplex {
       this.emit('disconnect')
     })
 
+    this.socket.once('connect', () => {
+      if(callback) {
+        callback()
+      }
+    })
+
     this.socket.on('connect', () => {
       this.connecting = false
       this.pending = false
@@ -55,10 +61,6 @@ export class XRDSocket extends Duplex {
 
       if(this.socket) {
         this.socket.emit('subscribeToBotBox2', this.xrd.id)
-      }
-
-      if(callback) {
-        callback()
       }
     })
 
