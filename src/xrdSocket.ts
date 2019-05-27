@@ -39,23 +39,43 @@ export class XRDSocket extends Duplex {
 
     this.socket = io.connect(urls.C3, { query: { auth: this.token, botBox: this.xrd.id } })
 
-    this.socket.once('connect', () => {
+    this.socket.on('disconnect', () => {
+      this.pending = true
+      this.connecting = true
+      this.emit('disconnect')
+    })
+
+    this.socket.on('connect', () => {
       this.connecting = false
       this.pending = false
       this.remoteAddress = urls.C3
       
+      this.emit('connect')
+      this.emit('ready')
+
       if(this.socket) {
         this.socket.emit('subscribeToBotBox2', this.xrd.id)
       }
 
-      this.emit('connect')
       if(callback) {
         callback()
       }
     })
 
     this.socket.on('error', (error: any) => {
-      this.emit('error', error)
+      let wrappedError: Error
+
+      if(typeof(error) === 'string') {
+        wrappedError = new Error(error)
+      } else if (error instanceof Error) {
+        wrappedError = error
+      } else {
+        wrappedError = new Error('Unknown error')
+      }
+
+      this.emit('error', wrappedError)
+
+      this.close()
     })
 
     this.socket.on('onReceiveAutopilotMessage', (data: any) => {
@@ -76,7 +96,7 @@ export class XRDSocket extends Duplex {
   }
 
   _write(chunk: (string | Buffer | Uint8Array), encoding: string, callback: Function) {
-    if(!this.socket) {
+    if(!this.socket || this.pending || this.connecting) {
       return callback(new Error('No connection to XRD'))
     }
 
@@ -87,13 +107,23 @@ export class XRDSocket extends Duplex {
   }
 
   _writev(items: Array<{chunk: any, encoding: string}>, callback: Function) {
-    if(!this.socket) {
+    if(!this.socket || this.pending || this.connecting) {
       return callback(new Error('No connection to XRD'))
     }
     
     let encodedData = this.coder.encode(items)
     this.__toXRD(encodedData)
 
+    callback()
+  }
+
+  _destroy(error: Error | null, callback: (error: Error | null) => void) {
+    this.unsubscribe()
+    callback(error)
+  }
+
+  _final(callback: (error?: Error | null | undefined) => void) {
+    this.unsubscribe()
     callback()
   }
 
@@ -105,7 +135,7 @@ export class XRDSocket extends Duplex {
     }
   }
 
-  close () {
+  private unsubscribe() {
     if (this.socket) {
       this.socket.emit('unsubscribeFromBotBox2', this.xrd.id)
 
@@ -114,9 +144,11 @@ export class XRDSocket extends Duplex {
       this.connecting = false
       this.pending = true
       this.remoteAddress = undefined
-
-      this.emit('close')
     }
   }
-}
 
+  close () {
+    this.unsubscribe()
+    this.emit('close')
+  }
+}
