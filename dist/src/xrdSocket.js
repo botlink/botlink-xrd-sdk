@@ -105,7 +105,7 @@ var XRDSocket = /** @class */ (function (_super) {
             return;
         }
         var encodedData = this.coder.encode([{ chunk: chunk, encoding: encoding }]);
-        this.__toXRD(encodedData);
+        this.writeToSocketIO(encodedData);
         callback();
     };
     XRDSocket.prototype._writev = function (items, callback) {
@@ -120,7 +120,7 @@ var XRDSocket = /** @class */ (function (_super) {
             return;
         }
         var encodedData = this.coder.encode(items);
-        this.__toXRD(encodedData);
+        this.writeToSocketIO(encodedData);
         callback();
     };
     XRDSocket.prototype._destroy = function (error, callback) {
@@ -131,7 +131,7 @@ var XRDSocket = /** @class */ (function (_super) {
         this.unsubscribe();
         callback();
     };
-    XRDSocket.prototype.__toXRD = function (bytes64) {
+    XRDSocket.prototype.writeToSocketIO = function (bytes64) {
         this.bytesWritten += bytes64.length;
         if (this.socket) {
             this.socket.emit('sendAutopilotMessageToBotBox', this.xrd.id, bytes64);
