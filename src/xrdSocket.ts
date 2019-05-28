@@ -39,23 +39,43 @@ export class XRDSocket extends Duplex {
 
     this.socket = io.connect(urls.C3, { query: { auth: this.token, botBox: this.xrd.id } })
 
-    this.socket.once('connect', () => {
-      this.connecting = false
-      this.pending = false
-      this.remoteAddress = urls.C3
-      
-      if(this.socket) {
-        this.socket.emit('subscribeToBotBox2', this.xrd.id)
-      }
+    this.socket.on('disconnect', () => {
+      this.connecting = true
+      this.emit('disconnect')
+    })
 
-      this.emit('connect')
+    this.socket.once('connect', () => {
       if(callback) {
         callback()
       }
     })
 
+    this.socket.on('connect', () => {
+      this.connecting = false
+      this.remoteAddress = urls.C3
+      
+      this.emit('connect')
+      this.emit('ready')
+
+      if(this.socket) {
+        this.socket.emit('subscribeToBotBox2', this.xrd.id)
+      }
+    })
+
     this.socket.on('error', (error: any) => {
-      this.emit('error', error)
+      let wrappedError: Error
+
+      if(typeof(error) === 'string') {
+        wrappedError = new Error(error)
+      } else if (error instanceof Error) {
+        wrappedError = error
+      } else {
+        wrappedError = new Error('Unknown error')
+      }
+
+      this.emit('error', wrappedError)
+
+      this.close()
     })
 
     this.socket.on('onReceiveAutopilotMessage', (data: any) => {
@@ -80,8 +100,16 @@ export class XRDSocket extends Duplex {
       return callback(new Error('No connection to XRD'))
     }
 
+    if(this.connecting) {
+      this.socket.once('connect', () => {
+        this._write(chunk, encoding, callback)
+      })
+
+      return
+    }
+
     let encodedData = this.coder.encode([{ chunk, encoding }])
-    this.__toXRD(encodedData)
+    this.writeToSocketIO(encodedData)
 
     callback()
   }
@@ -90,14 +118,32 @@ export class XRDSocket extends Duplex {
     if(!this.socket) {
       return callback(new Error('No connection to XRD'))
     }
-    
+
+    if(this.connecting) {
+      this.socket.once('connect', () => {
+        this._writev(items, callback)
+      })
+
+      return
+    }
+
     let encodedData = this.coder.encode(items)
-    this.__toXRD(encodedData)
+    this.writeToSocketIO(encodedData)
 
     callback()
   }
 
-  __toXRD(bytes64: string) {
+  _destroy(error: Error | null, callback: (error: Error | null) => void) {
+    this.unsubscribe()
+    callback(error)
+  }
+
+  _final(callback: (error?: Error | null | undefined) => void) {
+    this.unsubscribe()
+    callback()
+  }
+
+  private writeToSocketIO(bytes64: string) {
     this.bytesWritten += bytes64.length
 
     if(this.socket) {
@@ -105,18 +151,19 @@ export class XRDSocket extends Duplex {
     }
   }
 
-  close () {
+  private unsubscribe() {
     if (this.socket) {
       this.socket.emit('unsubscribeFromBotBox2', this.xrd.id)
 
       this.socket.disconnect()
       this.socket = undefined
       this.connecting = false
-      this.pending = true
       this.remoteAddress = undefined
-
-      this.emit('close')
     }
   }
-}
 
+  close () {
+    this.unsubscribe()
+    this.emit('close')
+  }
+}
