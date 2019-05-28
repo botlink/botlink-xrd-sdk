@@ -40,7 +40,6 @@ export class XRDSocket extends Duplex {
     this.socket = io.connect(urls.C3, { query: { auth: this.token, botBox: this.xrd.id } })
 
     this.socket.on('disconnect', () => {
-      this.pending = true
       this.connecting = true
       this.emit('disconnect')
     })
@@ -53,7 +52,6 @@ export class XRDSocket extends Duplex {
 
     this.socket.on('connect', () => {
       this.connecting = false
-      this.pending = false
       this.remoteAddress = urls.C3
       
       this.emit('connect')
@@ -102,6 +100,14 @@ export class XRDSocket extends Duplex {
       return callback(new Error('No connection to XRD'))
     }
 
+    if(this.connecting) {
+      this.socket.once('connect', () => {
+        this._write(chunk, encoding, callback)
+      })
+
+      return
+    }
+
     let encodedData = this.coder.encode([{ chunk, encoding }])
     this.__toXRD(encodedData)
 
@@ -112,7 +118,15 @@ export class XRDSocket extends Duplex {
     if(!this.socket) {
       return callback(new Error('No connection to XRD'))
     }
-    
+
+    if(this.connecting) {
+      this.socket.once('connect', () => {
+        this._writev(items, callback)
+      })
+
+      return
+    }
+
     let encodedData = this.coder.encode(items)
     this.__toXRD(encodedData)
 
@@ -144,7 +158,6 @@ export class XRDSocket extends Duplex {
       this.socket.disconnect()
       this.socket = undefined
       this.connecting = false
-      this.pending = true
       this.remoteAddress = undefined
     }
   }

@@ -48,21 +48,21 @@ var XRDSocket = /** @class */ (function (_super) {
         this.connecting = true;
         this.socket = socket_io_client_1.default.connect(urls.C3, { query: { auth: this.token, botBox: this.xrd.id } });
         this.socket.on('disconnect', function () {
-            _this.pending = true;
             _this.connecting = true;
             _this.emit('disconnect');
         });
+        this.socket.once('connect', function () {
+            if (callback) {
+                callback();
+            }
+        });
         this.socket.on('connect', function () {
             _this.connecting = false;
-            _this.pending = false;
             _this.remoteAddress = urls.C3;
             _this.emit('connect');
             _this.emit('ready');
             if (_this.socket) {
                 _this.socket.emit('subscribeToBotBox2', _this.xrd.id);
-            }
-            if (callback) {
-                callback();
             }
         });
         this.socket.on('error', function (error) {
@@ -94,16 +94,30 @@ var XRDSocket = /** @class */ (function (_super) {
         this.readyForBytes = true;
     };
     XRDSocket.prototype._write = function (chunk, encoding, callback) {
-        if (!this.socket || this.pending || this.connecting) {
+        var _this = this;
+        if (!this.socket) {
             return callback(new Error('No connection to XRD'));
+        }
+        if (this.connecting) {
+            this.socket.once('connect', function () {
+                _this._write(chunk, encoding, callback);
+            });
+            return;
         }
         var encodedData = this.coder.encode([{ chunk: chunk, encoding: encoding }]);
         this.__toXRD(encodedData);
         callback();
     };
     XRDSocket.prototype._writev = function (items, callback) {
-        if (!this.socket || this.pending || this.connecting) {
+        var _this = this;
+        if (!this.socket) {
             return callback(new Error('No connection to XRD'));
+        }
+        if (this.connecting) {
+            this.socket.once('connect', function () {
+                _this._writev(items, callback);
+            });
+            return;
         }
         var encodedData = this.coder.encode(items);
         this.__toXRD(encodedData);
@@ -129,7 +143,6 @@ var XRDSocket = /** @class */ (function (_super) {
             this.socket.disconnect();
             this.socket = undefined;
             this.connecting = false;
-            this.pending = true;
             this.remoteAddress = undefined;
         }
     };
