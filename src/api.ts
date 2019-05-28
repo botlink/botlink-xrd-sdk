@@ -18,22 +18,30 @@ export interface Credentials {
     }
 }
 
-export const auth = (email: string, password: string) => {
-  return fetch(urls.API + loginPath, { 
+export const auth = async (email: string, password: string) : Promise<Credentials> => {
+  const response = await fetch(urls.API + loginPath, { 
     method: 'POST',
     body: JSON.stringify({
       email,
       password
     }),
     headers: { 'Content-Type': 'application/json' }
-  }).then((response) => response.json()).then((body) => {
-    const {
-      user,
-      token
-    } = body
-
-    return { user, token }
   })
+
+  if(!response.ok) {
+    if(response.status >= 400 && response.status < 500) {
+      throw new Error('Invalid username or password')
+    } else {
+      throw new Error(response.statusText)
+    }
+    
+  }
+
+  const credentials = await response.json()
+
+  const { user, token } = credentials
+
+  return { user, token }
 }
 
 export class Api {
@@ -44,19 +52,25 @@ export class Api {
 }
 
 export class XRDApi extends Api {
-  list() : Promise<Array<XRD>> {
-    return fetch(urls.API + xrdsPath(this.credentials.user.id), {
-        headers: [
-            ['Authorization', this.credentials.token]
-        ]
-    }).then((response) => response.json()).then((body) => {
-      return <Array<XRD>>body.map((xrd: any) => {
-        return { 
-          id: xrd.id,
-          hardwareId: xrd.hardwareId,
-          name: xrd.name || xrd.emei
-        }
-      })
+  async list() : Promise<Array<XRD>> {
+    const response = await fetch(urls.API + xrdsPath(this.credentials.user.id), {
+      headers: [
+          ['Authorization', this.credentials.token]
+      ]
+    })
+
+    if(!response.ok) {
+      throw new Error(response.statusText)
+    }
+
+    const body = await response.json()
+
+    return <Array<XRD>>body.map((xrd: any) => {
+      return { 
+        id: xrd.id,
+        hardwareId: xrd.hardwareId,
+        name: xrd.name || xrd.emei
+      }
     })
   }
 }
