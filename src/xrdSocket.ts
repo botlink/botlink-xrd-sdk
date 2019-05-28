@@ -109,7 +109,7 @@ export class XRDSocket extends Duplex {
     }
 
     let encodedData = this.coder.encode([{ chunk, encoding }])
-    this.__toXRD(encodedData)
+    this.writeToSocketIO(encodedData)
 
     callback()
   }
@@ -128,7 +128,7 @@ export class XRDSocket extends Duplex {
     }
 
     let encodedData = this.coder.encode(items)
-    this.__toXRD(encodedData)
+    this.writeToSocketIO(encodedData)
 
     callback()
   }
@@ -143,7 +143,7 @@ export class XRDSocket extends Duplex {
     callback()
   }
 
-  __toXRD(bytes64: string) {
+  private writeToSocketIO(bytes64: string) {
     this.bytesWritten += bytes64.length
 
     if(this.socket) {
