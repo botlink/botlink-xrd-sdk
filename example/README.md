@@ -13,7 +13,7 @@ yarn
 
 Running the example requires configuring a few environment variables.
 
-This exmaple uses dotenv, so you can place these in a .env file in this directory.
+This example uses dotenv, so you can place these in a .env file in this directory.
 
 | Environment Variable | Required? | Description |
 | -------------------- | --------- | ----------- |
