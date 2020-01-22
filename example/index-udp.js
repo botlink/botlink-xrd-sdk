@@ -32,21 +32,6 @@ var server;
 console.log(`C3 URL - ${C3}`);
 console.log(`API URL - ${API}`);
 
-const destroy = () => {
-  if (currentSocket) {
-    console.log("[DESTROY] Connection from ", currentSocket.remoteAddress);
-    currentSocket.removeAllListeners();
-    currentSocket.end();
-    currentSocket = null;
-  }
-
-  if (client) {
-    client.removeAllListeners();
-    client.close();
-    client = null;
-  }
-};
-
 const authenticate = async relay => {
   let credentials;
 
@@ -106,7 +91,7 @@ const authenticate = async relay => {
     credentials
   });
 
-  xrdSocket.on("error", () => {
+  xrdSocket.on("error", error => {
     console.error(error);
     xrdSocket.close();
     server.close();
