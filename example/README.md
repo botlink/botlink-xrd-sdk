@@ -36,3 +36,9 @@ yarn start
 ```bash
 yarn start-udp
 ```
+
+### To run the UDP example and connect to multiple XRDs
+
+```bash
+yarn start-udp:multi
+```
