@@ -8,7 +8,8 @@
   "private": true,
   "scripts": {
     "start": "node index.js",
-    "start-udp": "node index-udp.js"
+    "start-udp": "node index-udp.js",
+    "start-udp:multi": "node index-udp-multi.js"
   },
   "dependencies": {
     "botlink-xrd-sdk": "git+ssh://git@github.com/botlink/botlink-xrd-sdk.git#semver:^0.1.0",

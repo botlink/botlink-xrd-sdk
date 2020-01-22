@@ -1,5 +1,5 @@
 /**
-Copyright 2019 Botlink, LLC.
+Copyright 2020 Botlink, LLC.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -59,65 +59,69 @@ const authenticate = async relay => {
     throw new Error("Unable to list XRDs");
   }
 
-  let selectedXrd = xrds.find(xrd => {
-    return xrd.hardwareId === relay.xrd.hardwareId;
-  });
-
-  if (!selectedXrd) {
-    throw new Error("Unable to find the XRD specified");
+  if (!xrds) {
+    throw new Error(
+      "Unable to find any XRDs registered to this account specified"
+    );
   }
 
-  return { credentials, selectedXrd };
+  return { credentials, xrds };
 };
 
 (async () => {
   const relay = {
     xrd: {
-      hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
       email: process.env.RELAY_XRD_EMAIL,
       password: process.env.RELAY_XRD_PASSWORD
     }
   };
 
-  const { credentials, selectedXrd: xrd } = await authenticate(relay);
+  const { credentials, xrds } = await authenticate(relay);
 
-  server = udp.createSocket("udp4");
+  let portOffset = 0;
+  const basePort = process.env.PORT || 8080;
 
-  const port = process.env.PORT || 8080;
-  const writePort = port + 1;
+  for (let xrd of xrds) {
+    const server = udp.createSocket("udp4");
 
-  const xrdSocket = new XRDSocket({
-    xrd,
-    credentials
-  });
+    const port = basePort + portOffset;
+    const writePort = port + 1;
 
-  xrdSocket.on("error", error => {
-    console.error(error);
-    xrdSocket.close();
-    server.close();
-  });
+    portOffset += 2;
 
-  xrdSocket.on("data", message => {
-    console.log("From XRD:", Buffer.from(message).toString("hex"));
-    server.send(message, writePort);
-  });
+    const xrdSocket = new XRDSocket({
+      xrd,
+      credentials
+    });
 
-  xrdSocket.connect(() => {
-    server.bind(port, () => {
-      console.log(`Listening on port ${port}`);
+    xrdSocket.on("error", error => {
+      console.error(error);
+      xrdSocket.close();
+      server.close();
+    });
 
-      server.on("message", (message, rinfo) => {
-        console.log("From GCS:", Buffer.from(message).toString("hex"));
-        xrdSocket.write(message);
-      });
+    xrdSocket.on("data", message => {
+      console.log("From XRD:", Buffer.from(message).toString("hex"));
+      server.send(message, writePort);
+    });
 
-      server.on("error", error => {
-        console.error(error);
-        xrdSocket.close();
-        server.close();
+    xrdSocket.connect(() => {
+      server.bind(port, () => {
+        console.log(`Listening on port ${port}, writing to port ${writePort}`);
+
+        server.on("message", (message, rinfo) => {
+          console.log("From GCS:", Buffer.from(message).toString("hex"));
+          xrdSocket.write(message);
+        });
+
+        server.on("error", error => {
+          console.error(error);
+          xrdSocket.close();
+          server.close();
+        });
       });
     });
-  });
+  }
 })().catch(error => {
   console.error("[ERROR] ", error);
 
