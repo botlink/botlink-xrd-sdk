@@ -46,41 +46,43 @@ var XRDSocket = /** @class */ (function (_super) {
     XRDSocket.prototype.connect = function (callback) {
         var _this = this;
         this.connecting = true;
-        this.socket = socket_io_client_1.default.connect(urls.C3, { query: { auth: this.token, botBox: this.xrd.id } });
-        this.socket.on('disconnect', function () {
-            _this.connecting = true;
-            _this.emit('disconnect');
+        this.socket = socket_io_client_1.default.connect(urls.C3 + "/flight", {
+            query: { auth: this.token, botBox: this.xrd.id }
         });
-        this.socket.once('connect', function () {
+        this.socket.on("disconnect", function () {
+            _this.connecting = true;
+            _this.emit("disconnect");
+        });
+        this.socket.once("connect", function () {
             if (callback) {
                 callback();
             }
         });
-        this.socket.on('connect', function () {
+        this.socket.on("connect", function () {
             _this.connecting = false;
             _this.remoteAddress = urls.C3;
-            _this.emit('connect');
-            _this.emit('ready');
+            _this.emit("connect");
+            _this.emit("ready");
             if (_this.socket) {
-                _this.socket.emit('subscribeToBotBox2', _this.xrd.id);
+                _this.socket.emit("subscribeToBotBox2", _this.xrd.id);
             }
         });
-        this.socket.on('error', function (error) {
+        this.socket.on("error", function (error) {
             var wrappedError;
-            if (typeof (error) === 'string') {
+            if (typeof error === "string") {
                 wrappedError = new Error(error);
             }
             else if (error instanceof Error) {
                 wrappedError = error;
             }
             else {
-                wrappedError = new Error('Unknown error');
+                wrappedError = new Error("Unknown error");
             }
-            _this.emit('error', wrappedError);
+            _this.emit("error", wrappedError);
             _this.close();
         });
-        this.socket.on('onReceiveAutopilotMessage', function (data) {
-            var messages = _this.coder.decode(new Buffer(data, 'base64'));
+        this.socket.on("onReceiveAutopilotMessage", function (data) {
+            var messages = _this.coder.decode(new Buffer(data, "base64"));
             if (messages) {
                 messages.forEach(function (message) {
                     if (_this.readyForBytes) {
@@ -96,10 +98,10 @@ var XRDSocket = /** @class */ (function (_super) {
     XRDSocket.prototype._write = function (chunk, encoding, callback) {
         var _this = this;
         if (!this.socket) {
-            return callback(new Error('No connection to XRD'));
+            return callback(new Error("No connection to XRD"));
         }
         if (this.connecting) {
-            this.socket.once('connect', function () {
+            this.socket.once("connect", function () {
                 _this._write(chunk, encoding, callback);
             });
             return;
@@ -111,10 +113,10 @@ var XRDSocket = /** @class */ (function (_super) {
     XRDSocket.prototype._writev = function (items, callback) {
         var _this = this;
         if (!this.socket) {
-            return callback(new Error('No connection to XRD'));
+            return callback(new Error("No connection to XRD"));
         }
         if (this.connecting) {
-            this.socket.once('connect', function () {
+            this.socket.once("connect", function () {
                 _this._writev(items, callback);
             });
             return;
@@ -134,12 +136,12 @@ var XRDSocket = /** @class */ (function (_super) {
     XRDSocket.prototype.writeToSocketIO = function (bytes64) {
         this.bytesWritten += bytes64.length;
         if (this.socket) {
-            this.socket.emit('sendAutopilotMessageToBotBox', this.xrd.id, bytes64);
+            this.socket.emit("sendAutopilotMessageToBotBox", this.xrd.id, bytes64);
         }
     };
     XRDSocket.prototype.unsubscribe = function () {
         if (this.socket) {
-            this.socket.emit('unsubscribeFromBotBox2', this.xrd.id);
+            this.socket.emit("unsubscribeFromBotBox2", this.xrd.id);
             this.socket.disconnect();
             this.socket = undefined;
             this.connecting = false;
@@ -148,7 +150,7 @@ var XRDSocket = /** @class */ (function (_super) {
     };
     XRDSocket.prototype.close = function () {
         this.unsubscribe();
-        this.emit('close');
+        this.emit("close");
     };
     return XRDSocket;
 }(stream_1.Duplex));
