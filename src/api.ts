@@ -1,76 +1,111 @@
-import template from 'url-template'
-import fetch from 'node-fetch'
-import * as urls from './urls'
-import { XRD } from './xrd'
+import template from "url-template";
+import fetch from "node-fetch";
+import * as urls from "./urls";
+import { XRD, XRDPresence } from "./xrd";
 
-let xrdsPathTemplate = template.parse('/users/{id}/botboxes')
+let xrdsPathTemplate = template.parse("/users/{id}/botboxes");
+let xrdsPresenceTemplate = template.parse("/xrds/{id}/presence");
 
-const loginPath = '/sessions/login'
+const loginPath = "/sessions/login";
 
-const xrdsPath = (userId: Number) => {
-  return xrdsPathTemplate.expand({ id: userId })
-}
+const xrdsPresencePath = (userId: number) => {
+  return xrdsPresenceTemplate.expand({ id: userId });
+};
+
+const xrdsPath = (userId: number) => {
+  return xrdsPathTemplate.expand({ id: userId });
+};
 
 export interface Credentials {
-    token: string,
-    user: {
-      id: Number
-    }
+  token: string;
+  user: {
+    id: number;
+  };
 }
 
-export const auth = async (email: string, password: string) : Promise<Credentials> => {
-  const response = await fetch(urls.API + loginPath, { 
-    method: 'POST',
+export const auth = async (
+  email: string,
+  password: string
+): Promise<Credentials> => {
+  const response = await fetch(urls.API + loginPath, {
+    method: "POST",
     body: JSON.stringify({
       email,
       password
     }),
-    headers: { 'Content-Type': 'application/json' }
-  })
+    headers: { "Content-Type": "application/json" }
+  });
 
-  if(!response.ok) {
-    if(response.status >= 400 && response.status < 500) {
-      throw new Error('Invalid username or password')
+  if (!response.ok) {
+    if (response.status >= 400 && response.status < 500) {
+      throw new Error("Invalid username or password");
     } else {
-      throw new Error(response.statusText)
+      throw new Error(response.statusText);
     }
-    
   }
 
-  const credentials = await response.json()
+  const credentials = await response.json();
 
-  const { user, token } = credentials
+  const { user, token } = credentials;
 
-  return { user, token }
-}
+  return { user, token };
+};
 
 export class Api {
-  credentials: Credentials
+  credentials: Credentials;
   constructor(credentials: Credentials) {
-      this.credentials = credentials
+    this.credentials = credentials;
   }
 }
 
 export class XRDApi extends Api {
-  async list() : Promise<Array<XRD>> {
-    const response = await fetch(urls.API + xrdsPath(this.credentials.user.id), {
-      headers: [
-          ['Authorization', this.credentials.token]
-      ]
-    })
+  async list(): Promise<Array<XRD>> {
+    const response = await fetch(
+      urls.API + xrdsPath(this.credentials.user.id),
+      {
+        headers: [["Authorization", this.credentials.token]]
+      }
+    );
 
-    if(!response.ok) {
-      throw new Error(response.statusText)
+    if (!response.ok) {
+      throw new Error(response.statusText);
     }
 
-    const body = await response.json()
+    const body = await response.json();
 
     return <Array<XRD>>body.map((xrd: any) => {
-      return { 
+      return {
         id: xrd.id,
         hardwareId: xrd.hardwareId,
         name: xrd.name || xrd.emei
+      };
+    });
+  }
+
+  async presence(): Promise<Array<XRDPresence>> {
+    const response = await fetch(
+      urls.INFO + xrdsPresencePath(this.credentials.user.id),
+      {
+        headers: [["Authorization", this.credentials.token]]
       }
-    })
+    );
+
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+
+    const body = await response.json();
+
+    return body as Array<XRDPresence>;
+  }
+
+  async health(): Promise<boolean> {
+    try {
+      const response = await fetch(urls.C3 + "/health");
+
+      return response.ok;
+    } catch (error) {
+      return false;
+    }
   }
 }
