@@ -42,3 +42,9 @@ yarn start-udp
 ```bash
 yarn start-udp:multi
 ```
+
+### To run the presence & health example
+
+```bash
+yarn start-presence
+```
