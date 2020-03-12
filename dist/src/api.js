@@ -62,9 +62,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var url_template_1 = __importDefault(require("url-template"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
 var urls = __importStar(require("./urls"));
+var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 var xrdsPathTemplate = url_template_1.default.parse("/users/{id}/botboxes");
 var xrdsPresenceTemplate = url_template_1.default.parse("/xrds/{id}/presence");
-var loginPath = "/sessions/login";
+var loginPath = "/sessions/auth";
 var xrdsPresencePath = function (userId) {
     return xrdsPresenceTemplate.expand({ id: userId });
 };
@@ -72,7 +73,7 @@ var xrdsPath = function (userId) {
     return xrdsPathTemplate.expand({ id: userId });
 };
 exports.auth = function (email, password) { return __awaiter(_this, void 0, void 0, function () {
-    var response, credentials, user, token;
+    var response, credentials, auth, refresh, decoded;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + loginPath, {
@@ -96,8 +97,9 @@ exports.auth = function (email, password) { return __awaiter(_this, void 0, void
                 return [4 /*yield*/, response.json()];
             case 2:
                 credentials = _a.sent();
-                user = credentials.user, token = credentials.token;
-                return [2 /*return*/, { user: user, token: token }];
+                auth = credentials.auth, refresh = credentials.refresh;
+                decoded = jsonwebtoken_1.default.decode(auth);
+                return [2 /*return*/, { token: auth, refresh: refresh, user: { id: +decoded.id } }];
         }
     });
 }); };

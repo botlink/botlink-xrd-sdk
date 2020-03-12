@@ -2,11 +2,12 @@ import template from "url-template";
 import fetch from "node-fetch";
 import * as urls from "./urls";
 import { XRD, XRDPresence } from "./xrd";
+import jwt from "jsonwebtoken";
 
 let xrdsPathTemplate = template.parse("/users/{id}/botboxes");
 let xrdsPresenceTemplate = template.parse("/xrds/{id}/presence");
 
-const loginPath = "/sessions/login";
+const loginPath = "/sessions/auth";
 
 const xrdsPresencePath = (userId: number) => {
   return xrdsPresenceTemplate.expand({ id: userId });
@@ -18,6 +19,7 @@ const xrdsPath = (userId: number) => {
 
 export interface Credentials {
   token: string;
+  refresh: string;
   user: {
     id: number;
   };
@@ -46,9 +48,11 @@ export const auth = async (
 
   const credentials = await response.json();
 
-  const { user, token } = credentials;
+  const { auth, refresh } = credentials;
 
-  return { user, token };
+  const decoded = jwt.decode(auth) as any;
+
+  return { token: auth, refresh, user: { id: +decoded.id } };
 };
 
 export class Api {
