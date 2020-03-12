@@ -8,6 +8,7 @@ let xrdsPathTemplate = template.parse("/users/{id}/botboxes");
 let xrdsPresenceTemplate = template.parse("/xrds/{id}/presence");
 
 const loginPath = "/sessions/auth";
+const refreshPath = "/sessions/refresh";
 
 const xrdsPresencePath = (userId: number) => {
   return xrdsPresenceTemplate.expand({ id: userId });
@@ -59,7 +60,7 @@ export const auth = async (
 };
 
 export const refresh = async (token: string): Promise<Credentials> => {
-  const response = await fetch(urls.API + loginPath, {
+  const response = await fetch(urls.API + refreshPath, {
     method: "GET",
     headers: [
       ["Authorization", "application/json"],
