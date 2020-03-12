@@ -66,6 +66,7 @@ var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 var xrdsPathTemplate = url_template_1.default.parse("/users/{id}/botboxes");
 var xrdsPresenceTemplate = url_template_1.default.parse("/xrds/{id}/presence");
 var loginPath = "/sessions/auth";
+var refreshPath = "/sessions/refresh";
 var xrdsPresencePath = function (userId) {
     return xrdsPresenceTemplate.expand({ id: userId });
 };
@@ -110,7 +111,7 @@ exports.refresh = function (token) { return __awaiter(_this, void 0, void 0, fun
     var response, credentials, auth, refresh, decoded;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + loginPath, {
+            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + refreshPath, {
                     method: "GET",
                     headers: [
                         ["Authorization", "application/json"],
