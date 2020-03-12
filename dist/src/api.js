@@ -82,7 +82,10 @@ exports.auth = function (email, password) { return __awaiter(_this, void 0, void
                         email: email,
                         password: password
                     }),
-                    headers: { "Content-Type": "application/json" }
+                    headers: [
+                        ["Content-Type", "application/json"],
+                        ["Accept", "application/json"]
+                    ]
                 })];
             case 1:
                 response = _a.sent();
@@ -93,6 +96,31 @@ exports.auth = function (email, password) { return __awaiter(_this, void 0, void
                     else {
                         throw new Error(response.statusText);
                     }
+                }
+                return [4 /*yield*/, response.json()];
+            case 2:
+                credentials = _a.sent();
+                auth = credentials.auth, refresh = credentials.refresh;
+                decoded = jsonwebtoken_1.default.decode(auth);
+                return [2 /*return*/, { token: auth, refresh: refresh, user: { id: +decoded.id } }];
+        }
+    });
+}); };
+exports.refresh = function (token) { return __awaiter(_this, void 0, void 0, function () {
+    var response, credentials, auth, refresh, decoded;
+    return __generator(this, function (_a) {
+        switch (_a.label) {
+            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + loginPath, {
+                    method: "GET",
+                    headers: [
+                        ["Authorization", "application/json"],
+                        ["Accept", "application/json"]
+                    ]
+                })];
+            case 1:
+                response = _a.sent();
+                if (!response.ok) {
+                    throw new Error(response.statusText);
                 }
                 return [4 /*yield*/, response.json()];
             case 2:

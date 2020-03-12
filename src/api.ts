@@ -35,7 +35,10 @@ export const auth = async (
       email,
       password
     }),
-    headers: { "Content-Type": "application/json" }
+    headers: [
+      ["Content-Type", "application/json"],
+      ["Accept", "application/json"]
+    ]
   });
 
   if (!response.ok) {
@@ -44,6 +47,28 @@ export const auth = async (
     } else {
       throw new Error(response.statusText);
     }
+  }
+
+  const credentials = await response.json();
+
+  const { auth, refresh } = credentials;
+
+  const decoded = jwt.decode(auth) as any;
+
+  return { token: auth, refresh, user: { id: +decoded.id } };
+};
+
+export const refresh = async (token: string): Promise<Credentials> => {
+  const response = await fetch(urls.API + loginPath, {
+    method: "GET",
+    headers: [
+      ["Authorization", "application/json"],
+      ["Accept", "application/json"]
+    ]
+  });
+
+  if (!response.ok) {
+    throw new Error(response.statusText);
   }
 
   const credentials = await response.json();
