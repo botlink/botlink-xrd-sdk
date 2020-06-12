@@ -57,84 +57,24 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
-var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
 var url_template_1 = __importDefault(require("url-template"));
 var node_fetch_1 = __importDefault(require("node-fetch"));
 var urls = __importStar(require("./urls"));
-var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-var xrdsPathTemplate = url_template_1.default.parse("/users/{id}/botboxes");
+var auth_1 = require("./auth");
+var xrdsPathTemplate = url_template_1.default.parse('/users/{id}/botboxes');
+var xrdPathTemplate = url_template_1.default.parse('/botboxes/{id}');
+var xrdRegisterPathTemplate = url_template_1.default.parse("/registerbotbox/{userId}");
+var xrdConfigPathTemplate = url_template_1.default.parse("/xrd/{xrdId}/config");
 var xrdsPresenceTemplate = url_template_1.default.parse("/xrds/{id}/presence");
-var loginPath = "/sessions/auth";
-var refreshPath = "/sessions/refresh";
-var xrdsPresencePath = function (userId) {
-    return xrdsPresenceTemplate.expand({ id: userId });
-};
-var xrdsPath = function (userId) {
-    return xrdsPathTemplate.expand({ id: userId });
-};
-exports.auth = function (email, password) { return __awaiter(_this, void 0, void 0, function () {
-    var response, credentials, auth, refresh, decoded;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + loginPath, {
-                    method: "POST",
-                    body: JSON.stringify({
-                        email: email,
-                        password: password
-                    }),
-                    headers: [
-                        ["Content-Type", "application/json"],
-                        ["Accept", "application/json"]
-                    ]
-                })];
-            case 1:
-                response = _a.sent();
-                if (!response.ok) {
-                    if (response.status >= 400 && response.status < 500) {
-                        throw new Error("Invalid username or password");
-                    }
-                    else {
-                        throw new Error(response.statusText);
-                    }
-                }
-                return [4 /*yield*/, response.json()];
-            case 2:
-                credentials = _a.sent();
-                auth = credentials.auth, refresh = credentials.refresh;
-                decoded = jsonwebtoken_1.default.decode(auth);
-                return [2 /*return*/, { token: auth, refresh: refresh, user: { id: +decoded.id } }];
-        }
-    });
-}); };
-exports.refresh = function (token) { return __awaiter(_this, void 0, void 0, function () {
-    var response, credentials, auth, refresh, decoded;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + refreshPath, {
-                    method: "GET",
-                    headers: [
-                        ["Authorization", "application/json"],
-                        ["Accept", "application/json"]
-                    ]
-                })];
-            case 1:
-                response = _a.sent();
-                if (!response.ok) {
-                    throw new Error(response.statusText);
-                }
-                return [4 /*yield*/, response.json()];
-            case 2:
-                credentials = _a.sent();
-                auth = credentials.auth, refresh = credentials.refresh;
-                decoded = jsonwebtoken_1.default.decode(auth);
-                return [2 /*return*/, { token: auth, refresh: refresh, user: { id: +decoded.id } }];
-        }
-    });
-}); };
 var Api = /** @class */ (function () {
     function Api(credentials) {
+        var _this = this;
         this.credentials = credentials;
+        this.authManager = new auth_1.AuthManager();
+        this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, function (newCredentials) {
+            _this.credentials = newCredentials;
+        });
     }
     return Api;
 }());
@@ -146,12 +86,14 @@ var XRDApi = /** @class */ (function (_super) {
     }
     XRDApi.prototype.list = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var response, body;
+            var requestUrl, response, body;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + xrdsPath(this.credentials.user.id), {
-                            headers: [["Authorization", this.credentials.token]]
-                        })];
+                    case 0:
+                        requestUrl = urls.API + xrdsPathTemplate.expand({ id: this.credentials.user.id });
+                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                                headers: [["Authorization", this.credentials.token]]
+                            })];
                     case 1:
                         response = _a.sent();
                         if (!response.ok) {
@@ -171,12 +113,98 @@ var XRDApi = /** @class */ (function (_super) {
             });
         });
     };
+    XRDApi.prototype.updateXRD = function (xrdId, updateData) {
+        return __awaiter(this, void 0, void 0, function () {
+            var requestUrl, response, updateResponse;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        requestUrl = urls.API + xrdPathTemplate.expand({ id: xrdId });
+                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': this.credentials.token
+                                },
+                                body: JSON.stringify(updateData)
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        updateResponse = _a.sent();
+                        return [2 /*return*/, updateResponse];
+                }
+            });
+        });
+    };
+    XRDApi.prototype.registerXRD = function (hardwareId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var requestUrl, response, responseData;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        requestUrl = urls.API + xrdRegisterPathTemplate.expand({ id: this.credentials.user.id });
+                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': this.credentials.token
+                                },
+                                body: JSON.stringify({
+                                    hardwareId: (hardwareId || '').replace(/-/g, '') // remove dashes, matches rails backend expectations
+                                })
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        responseData = _a.sent();
+                        return [2 /*return*/, responseData];
+                }
+            });
+        });
+    };
+    XRDApi.prototype.getXRDConfig = function (hardwareId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var xrdId, requestUrl, response, xrdConfig;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        xrdId = (hardwareId || '').replace(/-/g, '');
+                        requestUrl = urls.API + xrdConfigPathTemplate.expand({ xrdId: xrdId });
+                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                                method: 'GET',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': this.credentials.token
+                                }
+                            })];
+                    case 1:
+                        response = _a.sent();
+                        if (!response.ok) {
+                            throw new Error(response.statusText);
+                        }
+                        return [4 /*yield*/, response.json()];
+                    case 2:
+                        xrdConfig = _a.sent();
+                        return [2 /*return*/, xrdConfig];
+                }
+            });
+        });
+    };
     XRDApi.prototype.presence = function () {
         return __awaiter(this, void 0, void 0, function () {
             var response, body;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, node_fetch_1.default(urls.INFO + xrdsPresencePath(this.credentials.user.id), {
+                    case 0: return [4 /*yield*/, node_fetch_1.default(urls.INFO + xrdsPresenceTemplate.expand({ id: this.credentials.user.id }), {
                             headers: [["Authorization", this.credentials.token]]
                         })];
                     case 1:
