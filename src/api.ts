@@ -2,100 +2,35 @@ import template from "url-template";
 import fetch from "node-fetch";
 import * as urls from "./urls";
 import { XRD, XRDPresence } from "./xrd";
-import jwt from "jsonwebtoken";
 
-let xrdsPathTemplate = template.parse("/users/{id}/botboxes");
+import { AuthManager, Credentials } from './auth'
+
+let xrdsPathTemplate = template.parse('/users/{id}/botboxes')
+let xrdPathTemplate = template.parse('/botboxes/{id}')
+let xrdRegisterPathTemplate = template.parse(`/registerbotbox/{userId}`)
+let xrdConfigPathTemplate = template.parse(`/xrd/{xrdId}/config`)
 let xrdsPresenceTemplate = template.parse("/xrds/{id}/presence");
 
-const loginPath = "/sessions/auth";
-const refreshPath = "/sessions/refresh";
-
-const xrdsPresencePath = (userId: number) => {
-  return xrdsPresenceTemplate.expand({ id: userId });
-};
-
-const xrdsPath = (userId: number) => {
-  return xrdsPathTemplate.expand({ id: userId });
-};
-
-export interface Credentials {
-  token: string;
-  refresh: string;
-  user: {
-    id: number;
-  };
-}
-
-export const auth = async (
-  email: string,
-  password: string
-): Promise<Credentials> => {
-  const response = await fetch(urls.API + loginPath, {
-    method: "POST",
-    body: JSON.stringify({
-      email,
-      password
-    }),
-    headers: [
-      ["Content-Type", "application/json"],
-      ["Accept", "application/json"]
-    ]
-  });
-
-  if (!response.ok) {
-    if (response.status >= 400 && response.status < 500) {
-      throw new Error("Invalid username or password");
-    } else {
-      throw new Error(response.statusText);
-    }
-  }
-
-  const credentials = await response.json();
-
-  const { auth, refresh } = credentials;
-
-  const decoded = jwt.decode(auth) as any;
-
-  return { token: auth, refresh, user: { id: +decoded.id } };
-};
-
-export const refresh = async (token: string): Promise<Credentials> => {
-  const response = await fetch(urls.API + refreshPath, {
-    method: "GET",
-    headers: [
-      ["Authorization", "application/json"],
-      ["Accept", "application/json"]
-    ]
-  });
-
-  if (!response.ok) {
-    throw new Error(response.statusText);
-  }
-
-  const credentials = await response.json();
-
-  const { auth, refresh } = credentials;
-
-  const decoded = jwt.decode(auth) as any;
-
-  return { token: auth, refresh, user: { id: +decoded.id } };
-};
-
 export class Api {
-  credentials: Credentials;
+  private authManager: AuthManager;
+  protected credentials: Credentials;
+
   constructor(credentials: Credentials) {
     this.credentials = credentials;
+    this.authManager = new AuthManager();
+
+    this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials: Credentials) => {
+      this.credentials = newCredentials
+    })
   }
 }
 
 export class XRDApi extends Api {
   async list(): Promise<Array<XRD>> {
-    const response = await fetch(
-      urls.API + xrdsPath(this.credentials.user.id),
-      {
-        headers: [["Authorization", this.credentials.token]]
-      }
-    );
+    const requestUrl = urls.API + xrdsPathTemplate.expand({ id: this.credentials.user.id })
+    const response = await fetch(requestUrl, {
+      headers: [["Authorization", this.credentials.token]]
+    });
 
     if (!response.ok) {
       throw new Error(response.statusText);
@@ -112,9 +47,72 @@ export class XRDApi extends Api {
     });
   }
 
+  async updateXRD(xrdId: string, updateData: any) {
+    const requestUrl = urls.API + xrdPathTemplate.expand({ id: xrdId })
+    const response = await fetch(requestUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': this.credentials.token
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+
+    const updateResponse = await response.json();
+
+    return updateResponse;
+  }
+
+  async registerXRD(hardwareId: string) {
+    const requestUrl = urls.API + xrdRegisterPathTemplate.expand({ id: this.credentials.user.id })
+    const response = await fetch(requestUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': this.credentials.token
+      },
+      body: JSON.stringify({
+        hardwareId: (hardwareId || '').replace(/-/g, '') // remove dashes, matches rails backend expectations
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+
+    const responseData = await response.json();
+
+    return responseData;
+  }
+
+  async getXRDConfig(hardwareId: string) {
+    const xrdId = (hardwareId || '').replace(/-/g, '')
+
+    const requestUrl = urls.API + xrdConfigPathTemplate.expand({ xrdId })
+    const response = await fetch(requestUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': this.credentials.token
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(response.statusText);
+    }
+
+    const xrdConfig = await response.json();
+
+    return xrdConfig;
+  }
+
   async presence(): Promise<Array<XRDPresence>> {
     const response = await fetch(
-      urls.INFO + xrdsPresencePath(this.credentials.user.id),
+      urls.INFO + xrdsPresenceTemplate.expand({ id: this.credentials.user.id }),
       {
         headers: [["Authorization", this.credentials.token]]
       }

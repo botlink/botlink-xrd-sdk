@@ -1,9 +1,10 @@
 import io from "socket.io-client";
 import MessageCoder from "./message-coder";
 import { XRD } from "./xrd";
-import { Credentials } from "./api";
 import * as urls from "./urls";
 import { Duplex } from "stream";
+
+import { AuthManager, Credentials } from './auth'
 
 export interface XRDSocketOptions {
   xrd: XRD;
@@ -11,10 +12,12 @@ export interface XRDSocketOptions {
 }
 
 export class XRDSocket extends Duplex {
+  private authManager: AuthManager;
+
   private socket?: SocketIOClient.Socket;
   private coder: MessageCoder = new MessageCoder();
   // TODO: Limit internal storage usage
-  private token: string;
+  private credentials: Credentials;
   readonly xrd: XRD;
   bytesRead: number = 0;
   bytesWritten: number = 0;
@@ -31,14 +34,19 @@ export class XRDSocket extends Duplex {
     });
 
     this.xrd = options.xrd;
-    this.token = options.credentials.token;
+    this.credentials = options.credentials;
+    this.authManager = new AuthManager()
+
+    this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials: Credentials) => {
+      this.credentials = newCredentials
+    })
   }
 
-  connect(callback?: Function) {
+  async connect(callback?: Function) {
     this.connecting = true;
 
     this.socket = io.connect(urls.C3 + "/flight", {
-      query: { auth: this.token, botBox: this.xrd.id }
+      query: { auth: this.credentials.token, botBox: this.xrd.id }
     });
 
     this.socket.on("disconnect", () => {
