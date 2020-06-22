@@ -95,7 +95,7 @@ export class AuthManager {
     if (!decoded.iat) { throw new Error('Token does not have a issued at(iat) defined.') }
 
     const dateDifference = decoded.exp - decoded.iat;
-    const oneThridDate = new Date(decoded.iat + (dateDifference / 3));
+    const oneThridDate = new Date((decoded.iat + (dateDifference / 3)) * 1000);
     const runJobInXMilliseconds = oneThridDate.getTime() - (new Date().getTime())
 
     this.scheduledRefresh = setTimeout(async () => {
