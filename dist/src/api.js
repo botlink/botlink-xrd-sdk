@@ -59,7 +59,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 var url_template_1 = __importDefault(require("url-template"));
-var node_fetch_1 = __importDefault(require("node-fetch"));
+require("isomorphic-fetch");
 var urls = __importStar(require("./urls"));
 var auth_1 = require("./auth");
 var xrdsPathTemplate = url_template_1.default.parse('/users/{id}/botboxes');
@@ -91,7 +91,7 @@ var XRDApi = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         requestUrl = urls.API + xrdsPathTemplate.expand({ id: this.credentials.user.id });
-                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                        return [4 /*yield*/, fetch(requestUrl, {
                                 headers: [["Authorization", this.credentials.token]]
                             })];
                     case 1:
@@ -120,7 +120,7 @@ var XRDApi = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         requestUrl = urls.API + xrdPathTemplate.expand({ id: xrdId });
-                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                        return [4 /*yield*/, fetch(requestUrl, {
                                 method: 'PUT',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ var XRDApi = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         requestUrl = urls.API + xrdRegisterPathTemplate.expand({ id: this.credentials.user.id });
-                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                        return [4 /*yield*/, fetch(requestUrl, {
                                 method: 'PUT',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -179,7 +179,7 @@ var XRDApi = /** @class */ (function (_super) {
                     case 0:
                         xrdId = (hardwareId || '').replace(/-/g, '');
                         requestUrl = urls.API + xrdConfigPathTemplate.expand({ xrdId: xrdId });
-                        return [4 /*yield*/, node_fetch_1.default(requestUrl, {
+                        return [4 /*yield*/, fetch(requestUrl, {
                                 method: 'GET',
                                 headers: {
                                     'Content-Type': 'application/json',
@@ -204,7 +204,7 @@ var XRDApi = /** @class */ (function (_super) {
             var response, body;
             return __generator(this, function (_a) {
                 switch (_a.label) {
-                    case 0: return [4 /*yield*/, node_fetch_1.default(urls.INFO + xrdsPresenceTemplate.expand({ id: this.credentials.user.id }), {
+                    case 0: return [4 /*yield*/, fetch(urls.INFO + xrdsPresenceTemplate.expand({ id: this.credentials.user.id }), {
                             headers: [["Authorization", this.credentials.token]]
                         })];
                     case 1:
@@ -227,7 +227,7 @@ var XRDApi = /** @class */ (function (_super) {
                 switch (_a.label) {
                     case 0:
                         _a.trys.push([0, 2, , 3]);
-                        return [4 /*yield*/, node_fetch_1.default(urls.C3 + "/health")];
+                        return [4 /*yield*/, fetch(urls.C3 + "/health")];
                     case 1:
                         response = _a.sent();
                         return [2 /*return*/, response.ok];

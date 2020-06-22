@@ -5,3 +5,4 @@ function __export(m) {
 Object.defineProperty(exports, "__esModule", { value: true });
 __export(require("./src/api"));
 __export(require("./src/xrdSocket"));
+__export(require("./src/auth"));

@@ -34,9 +34,6 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
         if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
     }
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
@@ -44,9 +41,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     result["default"] = mod;
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 var _this = this;
 Object.defineProperty(exports, "__esModule", { value: true });
-var node_fetch_1 = __importDefault(require("node-fetch"));
+require("isomorphic-fetch");
 var urls = __importStar(require("./urls"));
 var jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 var loginPath = "/sessions/auth";
@@ -55,7 +55,7 @@ exports.auth = function (email, password) { return __awaiter(_this, void 0, void
     var response, credentials, auth, refresh, decoded;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + loginPath, {
+            case 0: return [4 /*yield*/, fetch(urls.API + loginPath, {
                     method: "POST",
                     body: JSON.stringify({
                         email: email,
@@ -89,7 +89,7 @@ exports.refresh = function (refreshToken) { return __awaiter(_this, void 0, void
     var response, credentials, auth, refresh, decoded;
     return __generator(this, function (_a) {
         switch (_a.label) {
-            case 0: return [4 /*yield*/, node_fetch_1.default(urls.API + refreshPath, {
+            case 0: return [4 /*yield*/, fetch(urls.API + refreshPath, {
                     method: "POST",
                     headers: [
                         ["Authorization", refreshToken],

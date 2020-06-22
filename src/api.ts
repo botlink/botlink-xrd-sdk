@@ -1,5 +1,5 @@
 import template from "url-template";
-import fetch from "node-fetch";
+import "isomorphic-fetch";
 import * as urls from "./urls";
 import { XRD, XRDPresence } from "./xrd";
 
