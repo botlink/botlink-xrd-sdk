@@ -8,13 +8,13 @@ This package is not currently published to the NPM registry, so you'll need to a
 project using a slightly different syntax than normal.
 
 ```bash
-yarn add git+ssh://git@github.com/botlink/botlink-xrd-sdk.git#semver:^0.1.0
+yarn add git+https://github.com/botlink/botlink-xrd-sdk.git#semver:^0.1.0
 ```
 
 or
 
 ```bash
-npm install --save git+ssh://git@github.com/botlink/botlink-xrd-sdk.git#semver:^0.1.0
+npm install --save git+https://github.com/botlink/botlink-xrd-sdk.git#semver:^0.1.0
 ```
 
 ## Usage
