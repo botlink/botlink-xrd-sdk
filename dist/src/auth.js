@@ -153,7 +153,7 @@ var AuthManager = /** @class */ (function () {
                     throw new Error('Token does not have a issued at(iat) defined.');
                 }
                 dateDifference = decoded.exp - decoded.iat;
-                oneThridDate = new Date(decoded.iat + (dateDifference / 3));
+                oneThridDate = new Date((decoded.iat + (dateDifference / 3)) * 1000);
                 runJobInXMilliseconds = oneThridDate.getTime() - (new Date().getTime());
                 this.scheduledRefresh = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
                     var newCredentials;
