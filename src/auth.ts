@@ -99,6 +99,8 @@ export class AuthManager {
     const runJobInXMilliseconds = oneThridDate.getTime() - (new Date().getTime())
 
     this.scheduledRefresh = setTimeout(async () => {
+      this.scheduledRefresh = undefined
+
       const newCredentials = await this.checkRefresh(accessToken, refreshToken)
 
       if (newCredentials) {

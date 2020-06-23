@@ -19,9 +19,11 @@ export class Api {
     this.credentials = credentials;
     this.authManager = new AuthManager();
 
-    this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials: Credentials) => {
-      this.credentials = newCredentials
-    })
+    if (this.credentials.token && this.credentials.refresh) {
+      this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials: Credentials) => {
+        this.credentials = newCredentials
+      })
+    }
   }
 }
 
