@@ -78,7 +78,7 @@ var XRDSocket = /** @class */ (function (_super) {
         _this.xrd = options.xrd;
         _this.credentials = options.credentials;
         _this.authManager = new auth_1.AuthManager();
-        if (_this.credentials.token && _this.credentials.refresh) {
+        if (!options.skipRefresh) {
             _this.authManager.scheduleRefresh(_this.credentials.token, _this.credentials.refresh, function (newCredentials) {
                 _this.credentials = newCredentials;
             });

@@ -9,6 +9,7 @@ import { AuthManager, Credentials } from './auth'
 export interface XRDSocketOptions {
   xrd: XRD;
   credentials: Credentials;
+  skipRefresh: boolean;
 }
 
 export class XRDSocket extends Duplex {
@@ -37,7 +38,7 @@ export class XRDSocket extends Duplex {
     this.credentials = options.credentials;
     this.authManager = new AuthManager()
 
-    if (this.credentials.token && this.credentials.refresh) {
+    if (!options.skipRefresh) {
       this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials: Credentials) => {
         this.credentials = newCredentials
       })

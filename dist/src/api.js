@@ -68,11 +68,11 @@ var xrdRegisterPathTemplate = url_template_1.default.parse("/registerbotbox/{use
 var xrdConfigPathTemplate = url_template_1.default.parse("/xrd/{xrdId}/config");
 var xrdsPresenceTemplate = url_template_1.default.parse("/xrds/{id}/presence");
 var Api = /** @class */ (function () {
-    function Api(credentials) {
+    function Api(credentials, skipRefresh) {
         var _this = this;
         this.credentials = credentials;
         this.authManager = new auth_1.AuthManager();
-        if (this.credentials.token && this.credentials.refresh) {
+        if (!skipRefresh) {
             this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, function (newCredentials) {
                 _this.credentials = newCredentials;
             });

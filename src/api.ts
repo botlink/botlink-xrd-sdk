@@ -15,11 +15,11 @@ export class Api {
   private authManager: AuthManager;
   protected credentials: Credentials;
 
-  constructor(credentials: Credentials) {
+  constructor(credentials: Credentials, skipRefresh: boolean) {
     this.credentials = credentials;
     this.authManager = new AuthManager();
 
-    if (this.credentials.token && this.credentials.refresh) {
+    if (!skipRefresh) {
       this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials: Credentials) => {
         this.credentials = newCredentials
       })
