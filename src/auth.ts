@@ -65,22 +65,6 @@ export const refresh = async (refreshToken: string): Promise<Credentials> => {
   return { token: auth, refresh, user: { id: +decoded.id } };
 };
 
-export const checkRefresh = async (accessToken: string, refreshToken: string): Promise<Credentials | void> => {
-  const decoded = jwt.decode(accessToken) as any;
-
-  if (!decoded.exp) { throw new Error('Token does not have a expiration(exp) defined.') }
-  if (!decoded.iat) { throw new Error('Token does not have a issued at(iat) defined.') }
-
-  const dateDifference = decoded.exp - decoded.iat;
-  const halfDate = new Date(decoded.iat + (dateDifference / 2));
-  const tokenPastHalfLife = new Date() >= halfDate
-
-  if (!tokenPastHalfLife) { return }
-
-  const newCredentials = await refresh(refreshToken)
-  return newCredentials
-}
-
 export class AuthManager {
   private scheduledRefresh?: NodeJS.Timeout
 
@@ -95,25 +79,22 @@ export class AuthManager {
     if (!decoded.iat) { throw new Error('Token does not have a issued at(iat) defined.') }
 
     const dateDifference = decoded.exp - decoded.iat;
-    const oneThridDate = new Date((decoded.iat + (dateDifference / 3)) * 1000);
-    const runJobInXMilliseconds = oneThridDate.getTime() - (new Date().getTime())
+    const halfLife = new Date((decoded.iat + (dateDifference / 2)) * 1000);
+    const runJobInXMilliseconds = halfLife.getTime() - (new Date().getTime())
 
     this.scheduledRefresh = setTimeout(async () => {
       this.scheduledRefresh = undefined
 
-      const newCredentials = await this.checkRefresh(accessToken, refreshToken)
-
-      if (newCredentials) {
+      try {
+        const newCredentials = await refresh(refreshToken)
         this.scheduleRefresh(newCredentials.token, newCredentials.refresh, credentialsCallback)
         credentialsCallback(newCredentials)
-      } else {
-        this.scheduleRefresh(accessToken, refreshToken, credentialsCallback)
+      } catch (error) {
+        this.scheduledRefresh = setTimeout(async () => {
+          this.scheduledRefresh = undefined
+          this.scheduleRefresh(accessToken, refreshToken, credentialsCallback)
+        }, 5000)
       }
-
     }, runJobInXMilliseconds)
-  }
-
-  async checkRefresh(accessToken: string, refreshToken: string): Promise<Credentials | void> {
-    return checkRefresh(accessToken, refreshToken)
   }
 }
