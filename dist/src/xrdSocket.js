@@ -78,9 +78,11 @@ var XRDSocket = /** @class */ (function (_super) {
         _this.xrd = options.xrd;
         _this.credentials = options.credentials;
         _this.authManager = new auth_1.AuthManager();
-        _this.authManager.scheduleRefresh(_this.credentials.token, _this.credentials.refresh, function (newCredentials) {
-            _this.credentials = newCredentials;
-        });
+        if (_this.credentials.token && _this.credentials.refresh) {
+            _this.authManager.scheduleRefresh(_this.credentials.token, _this.credentials.refresh, function (newCredentials) {
+                _this.credentials = newCredentials;
+            });
+        }
         return _this;
     }
     XRDSocket.prototype.connect = function (callback) {

@@ -110,37 +110,12 @@ exports.refresh = function (refreshToken) { return __awaiter(_this, void 0, void
         }
     });
 }); };
-exports.checkRefresh = function (accessToken, refreshToken) { return __awaiter(_this, void 0, void 0, function () {
-    var decoded, dateDifference, halfDate, tokenPastHalfLife, newCredentials;
-    return __generator(this, function (_a) {
-        switch (_a.label) {
-            case 0:
-                decoded = jsonwebtoken_1.default.decode(accessToken);
-                if (!decoded.exp) {
-                    throw new Error('Token does not have a expiration(exp) defined.');
-                }
-                if (!decoded.iat) {
-                    throw new Error('Token does not have a issued at(iat) defined.');
-                }
-                dateDifference = decoded.exp - decoded.iat;
-                halfDate = new Date(decoded.iat + (dateDifference / 2));
-                tokenPastHalfLife = new Date() >= halfDate;
-                if (!tokenPastHalfLife) {
-                    return [2 /*return*/];
-                }
-                return [4 /*yield*/, exports.refresh(refreshToken)];
-            case 1:
-                newCredentials = _a.sent();
-                return [2 /*return*/, newCredentials];
-        }
-    });
-}); };
 var AuthManager = /** @class */ (function () {
     function AuthManager() {
     }
     AuthManager.prototype.scheduleRefresh = function (accessToken, refreshToken, credentialsCallback) {
         return __awaiter(this, void 0, void 0, function () {
-            var decoded, dateDifference, oneThridDate, runJobInXMilliseconds;
+            var decoded, dateDifference, halfLife, runJobInXMilliseconds;
             var _this = this;
             return __generator(this, function (_a) {
                 if (this.scheduledRefresh)
@@ -153,34 +128,39 @@ var AuthManager = /** @class */ (function () {
                     throw new Error('Token does not have a issued at(iat) defined.');
                 }
                 dateDifference = decoded.exp - decoded.iat;
-                oneThridDate = new Date((decoded.iat + (dateDifference / 3)) * 1000);
-                runJobInXMilliseconds = oneThridDate.getTime() - (new Date().getTime());
+                halfLife = new Date((decoded.iat + (dateDifference / 2)) * 1000);
+                runJobInXMilliseconds = halfLife.getTime() - (new Date().getTime());
                 this.scheduledRefresh = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
-                    var newCredentials;
+                    var newCredentials, error_1;
+                    var _this = this;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
-                            case 0: return [4 /*yield*/, this.checkRefresh(accessToken, refreshToken)];
+                            case 0:
+                                this.scheduledRefresh = undefined;
+                                _a.label = 1;
                             case 1:
+                                _a.trys.push([1, 3, , 4]);
+                                return [4 /*yield*/, exports.refresh(refreshToken)];
+                            case 2:
                                 newCredentials = _a.sent();
-                                if (newCredentials) {
-                                    this.scheduleRefresh(newCredentials.token, newCredentials.refresh, credentialsCallback);
-                                    credentialsCallback(newCredentials);
-                                }
-                                else {
-                                    this.scheduleRefresh(accessToken, refreshToken, credentialsCallback);
-                                }
-                                return [2 /*return*/];
+                                this.scheduleRefresh(newCredentials.token, newCredentials.refresh, credentialsCallback);
+                                credentialsCallback(newCredentials);
+                                return [3 /*break*/, 4];
+                            case 3:
+                                error_1 = _a.sent();
+                                this.scheduledRefresh = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
+                                    return __generator(this, function (_a) {
+                                        this.scheduledRefresh = undefined;
+                                        this.scheduleRefresh(accessToken, refreshToken, credentialsCallback);
+                                        return [2 /*return*/];
+                                    });
+                                }); }, 5000);
+                                return [3 /*break*/, 4];
+                            case 4: return [2 /*return*/];
                         }
                     });
                 }); }, runJobInXMilliseconds);
                 return [2 /*return*/];
-            });
-        });
-    };
-    AuthManager.prototype.checkRefresh = function (accessToken, refreshToken) {
-        return __awaiter(this, void 0, void 0, function () {
-            return __generator(this, function (_a) {
-                return [2 /*return*/, exports.checkRefresh(accessToken, refreshToken)];
             });
         });
     };

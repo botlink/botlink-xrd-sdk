@@ -72,9 +72,11 @@ var Api = /** @class */ (function () {
         var _this = this;
         this.credentials = credentials;
         this.authManager = new auth_1.AuthManager();
-        this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, function (newCredentials) {
-            _this.credentials = newCredentials;
-        });
+        if (this.credentials.token && this.credentials.refresh) {
+            this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, function (newCredentials) {
+                _this.credentials = newCredentials;
+            });
+        }
     }
     return Api;
 }());
