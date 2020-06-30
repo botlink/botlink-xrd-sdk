@@ -61,10 +61,10 @@ exports.auth = function (email, password) { return __awaiter(_this, void 0, void
                         email: email,
                         password: password
                     }),
-                    headers: [
-                        ["Content-Type", "application/json"],
-                        ["Accept", "application/json"]
-                    ]
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    }
                 })];
             case 1:
                 response = _a.sent();

@@ -20,10 +20,10 @@ export const auth = async (email: string, password: string): Promise<Credentials
       email,
       password
     }),
-    headers: [
-      ["Content-Type", "application/json"],
-      ["Accept", "application/json"]
-    ]
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json"
+    }
   });
 
   if (!response.ok) {
