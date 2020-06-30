@@ -31,7 +31,7 @@ export class XRDApi extends Api {
   async list(): Promise<Array<XRD>> {
     const requestUrl = urls.API + xrdsPathTemplate.expand({ id: this.credentials.user.id })
     const response = await fetch(requestUrl, {
-      headers: [["Authorization", this.credentials.token]]
+      headers: { "Authorization": this.credentials.token }
     });
 
     if (!response.ok) {
@@ -116,7 +116,7 @@ export class XRDApi extends Api {
     const response = await fetch(
       urls.INFO + xrdsPresenceTemplate.expand({ id: this.credentials.user.id }),
       {
-        headers: [["Authorization", this.credentials.token]]
+        headers: { "Authorization": this.credentials.token }
       }
     );
 

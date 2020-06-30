@@ -91,10 +91,10 @@ exports.refresh = function (refreshToken) { return __awaiter(_this, void 0, void
         switch (_a.label) {
             case 0: return [4 /*yield*/, fetch(urls.API + refreshPath, {
                     method: "POST",
-                    headers: [
-                        ["Authorization", refreshToken],
-                        ["Accept", "application/json"]
-                    ]
+                    headers: {
+                        "Authorization": refreshToken,
+                        "Accept": "application/json"
+                    }
                 })];
             case 1:
                 response = _a.sent();

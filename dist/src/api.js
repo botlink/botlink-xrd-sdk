@@ -94,7 +94,7 @@ var XRDApi = /** @class */ (function (_super) {
                     case 0:
                         requestUrl = urls.API + xrdsPathTemplate.expand({ id: this.credentials.user.id });
                         return [4 /*yield*/, fetch(requestUrl, {
-                                headers: [["Authorization", this.credentials.token]]
+                                headers: { "Authorization": this.credentials.token }
                             })];
                     case 1:
                         response = _a.sent();
@@ -207,7 +207,7 @@ var XRDApi = /** @class */ (function (_super) {
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0: return [4 /*yield*/, fetch(urls.INFO + xrdsPresenceTemplate.expand({ id: this.credentials.user.id }), {
-                            headers: [["Authorization", this.credentials.token]]
+                            headers: { "Authorization": this.credentials.token }
                         })];
                     case 1:
                         response = _a.sent();

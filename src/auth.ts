@@ -46,10 +46,10 @@ export const auth = async (email: string, password: string): Promise<Credentials
 export const refresh = async (refreshToken: string): Promise<Credentials> => {
   const response = await fetch(urls.API + refreshPath, {
     method: "POST",
-    headers: [
-      ["Authorization", refreshToken],
-      ["Accept", "application/json"]
-    ]
+    headers: {
+      "Authorization": refreshToken,
+      "Accept": "application/json"
+    }
   });
 
   if (!response.ok) {
