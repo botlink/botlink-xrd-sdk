@@ -13,7 +13,7 @@
     "start-presence": "node presence.js"
   },
   "dependencies": {
-    "botlink-xrd-sdk": "git+ssh://git@github.com/botlink/botlink-xrd-sdk.git#semver:^0.1.0",
+    "botlink-xrd-sdk": "https://github.com/botlink/botlink-xrd-sdk.git",
     "dotenv": "^7.0.0"
   }
 }

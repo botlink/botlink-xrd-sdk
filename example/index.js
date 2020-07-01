@@ -35,121 +35,121 @@ console.log(`C3 URL - ${C3}`)
 console.log(`API URL - ${API}`)
 
 const destroy = () => {
-    if(currentSocket) {
-        console.log('[DESTROY] Connection from ', currentSocket.remoteAddress)
-        currentSocket.removeAllListeners()
-        currentSocket.end()
-        currentSocket = null
-    }
-    
-    if(client) {
-        client.removeAllListeners()
-        client.close()
-        client = null
-    }
+  if (currentSocket) {
+    console.log('[DESTROY] Connection from ', currentSocket.remoteAddress)
+    currentSocket.removeAllListeners()
+    currentSocket.end()
+    currentSocket = null
+  }
+
+  if (client) {
+    client.removeAllListeners()
+    client.close()
+    client = null
+  }
 }
 
 const handleSocket = async (relay, socket) => {
-    if(currentSocket) {
-        console.error('[REJECT] There is already a connection active from ', currentSocket.remoteAddress)
-        socket.end()
-        return
-    }
+  if (currentSocket) {
+    console.error('[REJECT] There is already a connection active from ', currentSocket.remoteAddress)
+    socket.end()
+    return
+  }
 
-    console.log('[ACCEPT] Connection from ', socket.remoteAddress)
+  console.log('[ACCEPT] Connection from ', socket.remoteAddress)
 
-    currentSocket = socket
-    
-    console.log('[INFO] Authenticating with ', API, ' as ', relay.xrd.email)
+  currentSocket = socket
 
-    currentSocket.on('close', () => {
-        destroy()
+  console.log('[INFO] Authenticating with ', API, ' as ', relay.xrd.email)
+
+  currentSocket.on('close', () => {
+    destroy()
+  })
+
+  let credentials;
+
+  try {
+    credentials = await auth(relay.xrd.email, relay.xrd.password)
+  } catch (error) {
+    console.error('Unable to authenticate with botlink services', error)
+    destroy()
+    return
+  }
+
+  console.log('[INFO] Successfully authenticated with ', API, ' as ', relay.xrd.email)
+
+  const api = new XRDApi(credentials)
+
+  let xrds
+
+  try {
+    xrds = await api.list()
+  } catch (error) {
+    console.error('Unable to list XRDs', error)
+    destroy()
+    return
+  }
+
+  let selectedXrd = xrds.find((xrd) => {
+    return xrd.hardwareId === relay.xrd.hardwareId
+  })
+
+  if (!selectedXrd) {
+    console.error('Unable to find the XRD specified')
+    destroy()
+    return
+  }
+
+  console.log('[INFO] Connecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
+
+  const xrdSocket = new XRDSocket({
+    xrd: selectedXrd,
+    credentials: credentials
+  })
+
+  xrdSocket.on('disconnect', () => {
+    console.log('[INFO] Reconnecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
+  })
+
+  xrdSocket.connect(() => {
+    pipeline(currentSocket, xrdSocket, (err) => {
+      if (err) {
+        console.error(err)
+      }
+
+      destroy()
     })
 
-    let credentials;
+    pipeline(xrdSocket, currentSocket, (err) => {
+      if (err) {
+        console.error(err)
+      }
 
-    try {
-        credentials = await auth(relay.xrd.email, relay.xrd.password)
-    } catch(error) {
-        console.error('Unable to authenticate with botlink services', error)
-        destroy()
-        return
-    }
-
-    console.log('[INFO] Successfully authenticated with ', API, ' as ', relay.xrd.email)
-
-    const api = new XRDApi(credentials)
-
-    let xrds
-
-    try {
-        xrds = await api.list()
-    } catch(error) {
-        console.error('Unable to list XRDs', error)
-        destroy()
-        return
-    }
-
-    let selectedXrd = xrds.find((xrd) => {
-        return xrd.hardwareId === relay.xrd.hardwareId
+      destroy()
     })
 
-    if(!selectedXrd) {
-        console.error('Unable to find the XRD specified')
-        destroy()
-        return
-    }
-
-    console.log('[INFO] Connecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId ,')')
-
-    const xrdSocket = new XRDSocket({
-        xrd: selectedXrd,
-        credentials: credentials
-    })
-
-    xrdSocket.on('disconnect', () => {
-        console.log('[INFO] Reconnecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId ,')')
-    })
-
-    xrdSocket.connect(() => {
-        pipeline(currentSocket, xrdSocket, (err) => {
-            if(err) {
-                console.error(err)
-            }
-            
-            destroy()
-        })
-
-        pipeline(xrdSocket, currentSocket, (err) => {
-            if(err) {
-                console.error(err)
-            }
-            
-            destroy()
-        })
-
-        console.log('[INFO] Connected to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId ,')')
-    })    
+    console.log('[INFO] Connected to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
+  })
 }
 
 (async () => {
-    const relay = {
-        xrd: {
-            hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
-            email: process.env.RELAY_XRD_EMAIL,
-            password: process.env.RELAY_XRD_PASSWORD
-        }
+  const relay = {
+    xrd: {
+      hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
+      email: process.env.RELAY_XRD_EMAIL,
+      password: process.env.RELAY_XRD_PASSWORD
     }
-    
-    server = net.createServer(async (socket) => {
-        await handleSocket(relay, socket)
-    })
-    
-    server.listen(process.env.PORT || 8080)
-})().catch((error => {
-    console.error('[ERROR] ', error)
+  }
 
-    if(server) {
-        server.close()
-    }
+  server = net.createServer(async (socket) => {
+    await handleSocket(relay, socket)
+  })
+
+  server.listen(process.env.PORT || 5760)
+})().catch((error => {
+  console.error('[ERROR] ', error)
+
+  if (server) {
+    server.close()
+  }
 }))
