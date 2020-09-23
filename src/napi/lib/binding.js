@@ -1,4 +1,4 @@
-var wrtc = require('bindings')('botlink_wrtc_js');
+var wrtc = require('bindings')('botlink_wrtc_node');
 const EventEmitter = require('events')
 
 class Wrtc extends EventEmitter {
