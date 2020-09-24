@@ -13,6 +13,7 @@ public:
     Wrtc(const Napi::CallbackInfo& info);
 
     Napi::Value openConnection(const Napi::CallbackInfo& info);
+    Napi::Value closeConnection(const Napi::CallbackInfo& info);
 
     Napi::Value getAutopilotMessage(const Napi::CallbackInfo& info);
 

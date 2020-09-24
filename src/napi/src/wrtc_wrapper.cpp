@@ -21,6 +21,7 @@ Napi::Object Wrtc::Init(Napi::Env env, Napi::Object exports)
         DefineClass(env,
                     "Wrtc",
                     {InstanceMethod("openConnection", &Wrtc::openConnection),
+                     InstanceMethod("closeConnection", &Wrtc::closeConnection),
                      InstanceMethod("getAutopilotMessage", &Wrtc::getAutopilotMessage)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
@@ -63,6 +64,15 @@ Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
     // TODO(cgrahn): This can block for a few seconds. Spin off into a separate
     // thread?
     bool success = _wrtc.openConnection(config);
+
+    return Napi::Boolean::New(env, success);
+}
+
+Napi::Value Wrtc::closeConnection(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    bool success = _wrtc.closeConnection();
 
     return Napi::Boolean::New(env, success);
 }
