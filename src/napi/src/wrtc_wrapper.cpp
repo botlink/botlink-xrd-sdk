@@ -2,6 +2,16 @@
 
 #include <napi.h>
 
+namespace {
+// See https://stackoverflow.com/a/59777334
+std::string jsonToString(const Napi::Env& env, const Napi::Object& object)
+{
+  Napi::Object json = env.Global().Get("JSON").As<Napi::Object>();
+  Napi::Function stringify = json.Get("stringify").As<Napi::Function>();
+  return stringify.Call(json, { object }).As<Napi::String>();
+}
+}
+
 namespace botlink {
 namespace wrapper {
 
@@ -35,13 +45,23 @@ Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    if (!info[0].IsString()) {
-        Napi::TypeError::New(env, "Wrong argument. Expected string.")
+    // TODO(cgrahn): We might get JSON object. So look at how to convert that to
+    // string. Otherwise have to do that in js before calling this.
+
+    if (!(info[0].IsString() || info[0].IsObject())) {
+        Napi::TypeError::New(env, "Wrong argument. Expected string or JSON object.")
             .ThrowAsJavaScriptException();
     }
 
-    std::string config = info[0].As<Napi::String>();
+    std::string config;
+    if (info[0].IsObject()) {
+        config = jsonToString(env, info[0].As<Napi::Object>());
+    } else {
+        config = info[0].As<Napi::String>();
+    }
 
+    // TODO(cgrahn): This can block for a few seconds. Spin off into a separate
+    // thread?
     bool success = _wrtc.openConnection(config);
 
     return Napi::Boolean::New(env, success);
