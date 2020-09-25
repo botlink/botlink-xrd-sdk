@@ -22,7 +22,8 @@ Napi::Object Wrtc::Init(Napi::Env env, Napi::Object exports)
                     "Wrtc",
                     {InstanceMethod("openConnection", &Wrtc::openConnection),
                      InstanceMethod("closeConnection", &Wrtc::closeConnection),
-                     InstanceMethod("getAutopilotMessage", &Wrtc::getAutopilotMessage)});
+                     InstanceMethod("getUnreliableMessage", &Wrtc::getUnreliableMessage),
+                     InstanceMethod("sendUnreliableMessage", &Wrtc::sendUnreliableMessage)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -77,7 +78,7 @@ Napi::Value Wrtc::closeConnection(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, success);
 }
 
-Napi::Value Wrtc::getAutopilotMessage(const Napi::CallbackInfo& info)
+Napi::Value Wrtc::getUnreliableMessage(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     if (info.Length() != 1) {
@@ -92,11 +93,49 @@ Napi::Value Wrtc::getAutopilotMessage(const Napi::CallbackInfo& info)
 
     bool block = info[0].As<Napi::Boolean>();
 
-    std::vector<uint8_t> msg = _wrtc.getAutopilotMessage(block);
+    std::vector<uint8_t> msg = _wrtc.getUnreliableMessage(block);
 
+    // TODO(cgrahn): Something to tie life of vector to buffer. That way we can
+    // avoid the copy here.
     Napi::Buffer<uint8_t> obj = Napi::Buffer<uint8_t>::Copy(env, &msg[0], msg.size());
 
     return obj;
+}
+
+Napi::Value Wrtc::sendUnreliableMessage(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    if (info.Length() != 1) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    // This is to match the types that xrdSocket.ts accepts (except String, we
+    // only want binary data here).
+    if (!(info[0].IsBuffer() || info[0].IsTypedArray())) {
+        Napi::TypeError::New(env, "Wrong argument. Expected Buffer or Uint8Array.")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::vector<uint8_t> msg;
+
+    if (info[0].IsBuffer()) {
+        auto obj = info[0].As<Napi::Buffer<uint8_t>>();
+        uint8_t* start = obj.Data();
+        size_t length = obj.Length();
+        msg.insert(msg.end(), start, start + length);
+    } else {
+        auto obj = info[0].As<Napi::Uint8Array>();
+        uint8_t* start = obj.Data();
+        size_t length = obj.ByteLength();
+        msg.insert(msg.end(), start, start + length);
+    }
+
+    // TODO(cgrahn): If implementation sends immediately, we can get rid of the
+    // copy in this function.
+    bool success = _wrtc.sendUnreliableMessage(msg);
+
+    return Napi::Boolean::New(env, success);
 }
 
 }

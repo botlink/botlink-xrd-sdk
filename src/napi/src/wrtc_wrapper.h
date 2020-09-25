@@ -15,7 +15,8 @@ public:
     Napi::Value openConnection(const Napi::CallbackInfo& info);
     Napi::Value closeConnection(const Napi::CallbackInfo& info);
 
-    Napi::Value getAutopilotMessage(const Napi::CallbackInfo& info);
+    Napi::Value getUnreliableMessage(const Napi::CallbackInfo& info);
+    Napi::Value sendUnreliableMessage(const Napi::CallbackInfo& info);
 
 private:
     botlink::wrtc::Wrtc _wrtc;

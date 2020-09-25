@@ -23,7 +23,7 @@ class Wrtc extends EventEmitter {
         let f = () => {
             if (this.run_) {
                 // Get message without blocking
-                let msg = this.wrtc.getAutopilotMessage(false)
+                let msg = this.wrtc.getUnreliableMessage(false)
                 if (msg.length === 0) {
                     // run again in 10ms
                     setTimeout(f, 10)
@@ -41,6 +41,11 @@ class Wrtc extends EventEmitter {
     stop() {
         this.run_ = false
     }
+
+    send(msg) {
+        return this.wrtc.sendUnreliableMessage(msg)
+    }
+
 }
 
 module.exports.Wrtc = Wrtc
