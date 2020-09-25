@@ -16,6 +16,9 @@ target_include_directories(${PROJECT_NAME}_node PRIVATE
 
 
 set_target_properties(${PROJECT_NAME}_node PROPERTIES PREFIX "" SUFFIX ".node")
+set_target_properties(${PROJECT_NAME}_node PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
+# TODO(cgrahn): "$ORIGIN" is Linux specific
+set_target_properties(${PROJECT_NAME}_node PROPERTIES INSTALL_RPATH "$ORIGIN")
 target_link_libraries(${PROJECT_NAME}_node ${CMAKE_JS_LIB} kvsWebrtcClient sioclient_tls pthread jsoncpp test_amazon-no-tls)
 
 # Include N-API wrappers
@@ -26,3 +29,13 @@ execute_process(COMMAND node -p "require('node-addon-api').include"
 string(REPLACE "\n" "" NODE_ADDON_API_DIR ${NODE_ADDON_API_DIR})
 string(REPLACE "\"" "" NODE_ADDON_API_DIR ${NODE_ADDON_API_DIR})
 target_include_directories(${PROJECT_NAME}_node PRIVATE ${NODE_ADDON_API_DIR})
+
+# TODO(cgrahn): Below is Linux-only, hard-coding path isn't great, but the
+# variables the KVS project sets are in a different CMake scope.
+file(GLOB KVS_DEPS "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/amazon-kinesis-video-streams-webrtc-sdk-c/open-source/lib/*.so*")
+
+add_custom_command(
+        TARGET ${PROJECT_NAME}_node POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${KVS_DEPS}
+                ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/)
