@@ -19,7 +19,7 @@ set_target_properties(${PROJECT_NAME}_node PROPERTIES PREFIX "" SUFFIX ".node")
 set_target_properties(${PROJECT_NAME}_node PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE)
 # TODO(cgrahn): "$ORIGIN" is Linux specific
 set_target_properties(${PROJECT_NAME}_node PROPERTIES INSTALL_RPATH "$ORIGIN")
-target_link_libraries(${PROJECT_NAME}_node ${CMAKE_JS_LIB} kvsWebrtcClient sioclient_tls pthread jsoncpp test_amazon-no-tls)
+target_link_libraries(${PROJECT_NAME}_node ${CMAKE_JS_LIB} test_amazon)
 
 # Include N-API wrappers
 execute_process(COMMAND node -p "require('node-addon-api').include"

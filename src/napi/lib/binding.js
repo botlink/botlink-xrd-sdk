@@ -8,8 +8,8 @@ class Wrtc extends EventEmitter {
         this.run_ = false
     }
 
-    openConnection(config) {
-        return this.wrtc.openConnection(config)
+    openConnection(iceConfig, token, xrdId) {
+        return this.wrtc.openConnection(iceConfig, token, xrdId)
     }
 
     closeConnection() {

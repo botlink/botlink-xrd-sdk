@@ -3,6 +3,7 @@
 #include <napi.h>
 
 namespace {
+const char* prodSignalUrl = "https://botlink-signal-production.herokuapp.com";
 // See https://stackoverflow.com/a/59777334
 std::string jsonToString(const Napi::Env& env, const Napi::Object& object)
 {
@@ -42,28 +43,45 @@ Wrtc::Wrtc(const Napi::CallbackInfo& info)
 Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    if (info.Length() != 1) {
+    constexpr size_t numArgs = 3;
+    if (info.Length() != numArgs) {
         Napi::TypeError::New(env, "Wrong number of arguments")
             .ThrowAsJavaScriptException();
     }
 
-    // TODO(cgrahn): We might get JSON object. So look at how to convert that to
-    // string. Otherwise have to do that in js before calling this.
-
     if (!(info[0].IsString() || info[0].IsObject())) {
-        Napi::TypeError::New(env, "Wrong argument. Expected string or JSON object.")
+        Napi::TypeError::New(env, "Wrong argument for ICE config. Expected string or JSON object.")
             .ThrowAsJavaScriptException();
     }
 
-    std::string config;
-    if (info[0].IsObject()) {
-        config = jsonToString(env, info[0].As<Napi::Object>());
-    } else {
-        config = info[0].As<Napi::String>();
+    if (!info[1].IsString()) {
+        Napi::TypeError::New(env, "Wrong argument for token. Expected string.")
+            .ThrowAsJavaScriptException();
     }
+
+    if (!info[2].IsString()) {
+        Napi::TypeError::New(env, "Wrong argument for XRD hardware ID. Expected string.")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::string iceConfig;
+    if (info[0].IsObject()) {
+        iceConfig = jsonToString(env, info[0].As<Napi::Object>());
+    } else {
+        iceConfig = info[0].As<Napi::String>();
+    }
+
+    std::string token = info[1].As<Napi::String>();
+    std::string xrdId = info[2].As<Napi::String>();
 
     // TODO(cgrahn): This can block for a few seconds. Spin off into a separate
     // thread?
+    botlink::wrtc::WrtcConfig config;
+    config.iceConfig = iceConfig;
+    config.token = token;
+    config.xrdId = xrdId;
+    // TODO(cgrahn): Set url here or pass in from javascript?
+    config.signalUrl = prodSignalUrl;
     bool success = _wrtc.openConnection(config);
 
     return Napi::Boolean::New(env, success);
