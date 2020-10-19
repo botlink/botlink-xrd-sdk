@@ -2,7 +2,7 @@
 #define BOTLINK_WRTC_WRAPPER_H
 
 #include <napi.h>
-#include <wrtc.h>
+#include <_internal/wrtc.h>
 
 namespace botlink {
 namespace wrapper {
