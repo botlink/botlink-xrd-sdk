@@ -3,6 +3,13 @@ add_definitions(-DNAPI_VERSION=6)
 
 file(GLOB SOURCE_FILES "src/*.cpp")
 add_library(${PROJECT_NAME}_node SHARED ${SOURCE_FILES} ${CMAKE_JS_SRC})
+
+if(MSVC)
+  target_compile_options(${PROJECT_NAME}_node PRIVATE /W4 /WX)
+else()
+  target_compile_options(${PROJECT_NAME}_node PRIVATE -Wall -Wextra -pedantic -Werror)
+endif()
+
 target_include_directories(${PROJECT_NAME}_node PRIVATE
   ${CMAKE_JS_INC}
   ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/amazon-kinesis-video-streams-webrtc-sdk-c/src/include/com/amazonaws/kinesis/video/
