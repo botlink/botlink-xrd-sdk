@@ -2,6 +2,8 @@
 
 #include <napi.h>
 
+#include <memory>
+
 namespace {
 const char* prodSignalUrl = "https://botlink-signal-production.herokuapp.com";
 // See https://stackoverflow.com/a/59777334
@@ -24,7 +26,8 @@ Napi::Object Wrtc::Init(Napi::Env env, Napi::Object exports)
                     {InstanceMethod("openConnection", &Wrtc::openConnection),
                      InstanceMethod("closeConnection", &Wrtc::closeConnection),
                      InstanceMethod("getUnreliableMessage", &Wrtc::getUnreliableMessage),
-                     InstanceMethod("sendUnreliableMessage", &Wrtc::sendUnreliableMessage)});
+                     InstanceMethod("sendUnreliableMessage", &Wrtc::sendUnreliableMessage),
+                     InstanceMethod("start", &Wrtc::start)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -150,10 +153,67 @@ Napi::Value Wrtc::sendUnreliableMessage(const Napi::CallbackInfo& info)
     }
 
     // TODO(cgrahn): If implementation sends immediately, we can get rid of the
-    // copy in this function.
+    // copy from the Buffer/Array object into a std::vector in this function and
+    // overload _wrtc.sendUnreliableMessage() to take a pointer and length
+    // arguments.
     bool success = _wrtc.sendUnreliableMessage(msg);
 
     return Napi::Boolean::New(env, success);
+}
+
+Napi::Value Wrtc::start(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    _workerFn = Napi::ThreadSafeFunction::New(
+        env,
+        bound,         // JavaScript function called asynchronously
+        "Wrtc worker", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread will use this initially
+        [&workerThread = _workerThread]( Napi::Env ) { // Finalizer
+            workerThread.join();
+        } );
+
+    // Create a native thread
+    _workerThread = std::thread( [&fn = _workerFn, &wrtc = _wrtc] {
+        auto callback = []( Napi::Env env, Napi::Function jsCallback,
+                            std::vector<uint8_t>* msg) {
+            // Transform native data into JS data, passing it to the provided
+            // `jsCallback` -- the TSFN's JavaScript function.
+            Napi::Buffer<uint8_t> obj =
+                Napi::Buffer<uint8_t>::Copy(env, &(*msg)[0], msg->size());
+            jsCallback.Call( {Napi::String::New( env, "data" ), obj} );
+
+            // We're finished with the data.
+            delete msg;
+        };
+
+        while (true)
+        {
+            bool block = true;
+
+            auto msg = std::make_unique<std::vector<uint8_t>>();
+            *msg = wrtc.getUnreliableMessage(block);
+
+            // Perform a blocking call
+            napi_status status = fn.BlockingCall(msg.release(), callback);
+            if (status != napi_ok)
+            {
+                // Handle error
+                break;
+            }
+        }
+
+        // Release the thread-safe function
+        fn.Release();
+    } );
+
+    return Napi::Boolean::New(env, true);
 }
 
 }

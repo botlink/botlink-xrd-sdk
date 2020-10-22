@@ -4,6 +4,8 @@
 #include <napi.h>
 #include <_internal/wrtc.h>
 
+#include <thread>
+
 namespace botlink {
 namespace wrapper {
 
@@ -18,8 +20,12 @@ public:
     Napi::Value getUnreliableMessage(const Napi::CallbackInfo& info);
     Napi::Value sendUnreliableMessage(const Napi::CallbackInfo& info);
 
+    Napi::Value start(const Napi::CallbackInfo& info);
+
 private:
     botlink::wrtc::Wrtc _wrtc;
+    std::thread _workerThread;
+    Napi::ThreadSafeFunction _workerFn;
 };
 
 }

@@ -1,51 +1,17 @@
-var wrtc = require('bindings')('botlink_wrtc_node');
+const wrtc = require('bindings')('botlink_wrtc_node');
 const EventEmitter = require('events')
+const inherits = require('util').inherits
 
-class Wrtc extends EventEmitter {
+inherits(wrtc.Wrtc, EventEmitter)
+
+class Wrtc extends wrtc.Wrtc {
     constructor() {
         super()
-        this.wrtc = new wrtc.Wrtc()
-        this.run_ = false
-    }
-
-    openConnection(iceConfig, token, xrdId) {
-        return this.wrtc.openConnection(iceConfig, token, xrdId)
-    }
-
-    closeConnection() {
-        return this.wrtc.closeConnection()
-    }
-
-    run() {
-        this.run_ = true
-        // horrible hack until EventEmitter gets implemented at the C++ level in
-        // botlink_wrtc_node
-        let f = () => {
-            if (this.run_) {
-                // Get message without blocking
-                let msg = this.wrtc.getUnreliableMessage(false)
-                if (msg.length === 0) {
-                    // run again in 10ms
-                    setTimeout(f, 10)
-                } else {
-                    // This might get behind?
-                    this.emit('data', msg)
-                    // Run again as soon as possible
-                    setTimeout(f, 0)
-                }
-            }
-        }
-        f()
-    }
-
-    stop() {
-        this.run_ = false
     }
 
     send(msg) {
-        return this.wrtc.sendUnreliableMessage(msg)
+        return this.sendUnreliableMessage(msg)
     }
-
 }
 
 module.exports.Wrtc = Wrtc
