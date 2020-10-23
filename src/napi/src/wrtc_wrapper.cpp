@@ -25,6 +25,7 @@ Napi::Object Wrtc::Init(Napi::Env env, Napi::Object exports)
                     "Wrtc",
                     {InstanceMethod("openConnection", &Wrtc::openConnection),
                      InstanceMethod("closeConnection", &Wrtc::closeConnection),
+                     InstanceMethod("isConnected", &Wrtc::isConnected),
                      InstanceMethod("getUnreliableMessage", &Wrtc::getUnreliableMessage),
                      InstanceMethod("sendUnreliableMessage", &Wrtc::sendUnreliableMessage),
                      InstanceMethod("start", &Wrtc::start)});
@@ -97,6 +98,15 @@ Napi::Value Wrtc::closeConnection(const Napi::CallbackInfo& info)
     bool success = _wrtc.closeConnection();
 
     return Napi::Boolean::New(env, success);
+}
+
+Napi::Value Wrtc::isConnected(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    bool connected = _wrtc.isConnected();
+
+    return Napi::Boolean::New(env, connected);
 }
 
 Napi::Value Wrtc::getUnreliableMessage(const Napi::CallbackInfo& info)

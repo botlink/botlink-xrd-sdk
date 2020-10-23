@@ -16,6 +16,7 @@ public:
 
     Napi::Value openConnection(const Napi::CallbackInfo& info);
     Napi::Value closeConnection(const Napi::CallbackInfo& info);
+    Napi::Value isConnected(const Napi::CallbackInfo& info);
 
     Napi::Value getUnreliableMessage(const Napi::CallbackInfo& info);
     Napi::Value sendUnreliableMessage(const Napi::CallbackInfo& info);
