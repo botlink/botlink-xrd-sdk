@@ -2,6 +2,7 @@
 
 #include <napi.h>
 
+#include <atomic>
 #include <memory>
 
 namespace {
@@ -13,6 +14,43 @@ std::string jsonToString(const Napi::Env& env, const Napi::Object& object)
   Napi::Function stringify = json.Get("stringify").As<Napi::Function>();
   return stringify.Call(json, { object }).As<Napi::String>();
 }
+
+class ConnectWorker : public Napi::AsyncWorker {
+public:
+    ConnectWorker(Napi::Env& env,
+                  Napi::Promise::Deferred&& deferred,
+                  std::future<bool>&& future)
+    : Napi::AsyncWorker(env)
+    , _deferred(deferred)
+    , _future(std::move(future))
+    {}
+
+    void Execute()
+    {
+        try {
+            // TODO(cgrahn): This is waiting on socket.io/signal connection,
+            // also wait on WebRTC connection?
+            _result = _future.get();
+        } catch (const std::runtime_error& e) {
+            SetError(e.what());
+        }
+    }
+
+    void OnOK()
+    {
+        _deferred.Resolve(Napi::Boolean::New(Env(), _result));
+    }
+
+    void OnError(const Napi::Error& error)
+    {
+        _deferred.Reject(error.Value());
+    }
+
+private:
+    Napi::Promise::Deferred _deferred;
+    std::future<bool> _future;
+    std::atomic<bool> _result;
+};
 }
 
 namespace botlink {
@@ -86,9 +124,15 @@ Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
     config.xrdId = xrdId;
     // TODO(cgrahn): Set url here or pass in from javascript?
     config.signalUrl = prodSignalUrl;
-    bool success = _wrtc.openConnection(config);
 
-    return Napi::Boolean::New(env, success);
+    auto future = _wrtc.openConnection(config);
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    ConnectWorker* worker = new ConnectWorker(env, std::move(deferred), std::move(future));
+    worker->Queue();
+
+    return deferred.Promise();
 }
 
 Napi::Value Wrtc::closeConnection(const Napi::CallbackInfo& info)
