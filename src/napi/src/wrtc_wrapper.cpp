@@ -85,7 +85,7 @@ Wrtc::Wrtc(const Napi::CallbackInfo& info)
 Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    constexpr size_t numArgs = 3;
+    constexpr size_t numArgs = 4;
     if (info.Length() != numArgs) {
         Napi::TypeError::New(env, "Wrong number of arguments")
             .ThrowAsJavaScriptException();
@@ -106,6 +106,11 @@ Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    if (!info[3].IsNumber()) {
+        Napi::TypeError::New(env, "Wrong argument for timeout in seconds. Expected number.")
+            .ThrowAsJavaScriptException();
+    }
+
     std::string iceConfig;
     if (info[0].IsObject()) {
         iceConfig = jsonToString(env, info[0].As<Napi::Object>());
@@ -115,6 +120,7 @@ Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
 
     std::string token = info[1].As<Napi::String>();
     std::string xrdId = info[2].As<Napi::String>();
+    std::chrono::seconds timeout(info[3].As<Napi::Number>());
 
     // TODO(cgrahn): This can block for a few seconds. Spin off into a separate
     // thread?
@@ -125,7 +131,7 @@ Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
     // TODO(cgrahn): Set url here or pass in from javascript?
     config.signalUrl = prodSignalUrl;
 
-    auto future = _wrtc.openConnection(config);
+    auto future = _wrtc.openConnection(config, timeout);
     auto deferred = Napi::Promise::Deferred::New(env);
 
     // node.js garbage collects this
