@@ -1,36 +1,29 @@
-#include "wrtc_wrapper.h"
+#include "xrdconnection_wrapper.h"
+
+#include "botlink_api_wrapper.h"
 
 #include <napi.h>
 
-#include <atomic>
-#include <memory>
+#include <functional>
 
 namespace {
-const char* prodSignalUrl = "https://botlink-signal-production.herokuapp.com";
-// See https://stackoverflow.com/a/59777334
-std::string jsonToString(const Napi::Env& env, const Napi::Object& object)
-{
-  Napi::Object json = env.Global().Get("JSON").As<Napi::Object>();
-  Napi::Function stringify = json.Get("stringify").As<Napi::Function>();
-  return stringify.Call(json, { object }).As<Napi::String>();
-}
 
+template<class T>
 class ConnectWorker : public Napi::AsyncWorker {
 public:
     ConnectWorker(Napi::Env& env,
                   Napi::Promise::Deferred&& deferred,
-                  std::future<bool>&& future)
+                  std::function<T> action)
     : Napi::AsyncWorker(env)
     , _deferred(deferred)
-    , _future(std::move(future))
+    , _action(action)
     {}
 
     void Execute()
     {
         try {
-            // TODO(cgrahn): This is waiting on socket.io/signal connection,
-            // also wait on WebRTC connection?
-            _result = _future.get();
+            auto future = _action();
+            _result = future.get();
         } catch (const std::runtime_error& e) {
             SetError(e.what());
         }
@@ -48,118 +41,118 @@ public:
 
 private:
     Napi::Promise::Deferred _deferred;
-    std::future<bool> _future;
-    std::atomic<bool> _result;
+    bool _result;
+    std::function<T> _action;
 };
 }
 
 namespace botlink {
 namespace wrapper {
 
-Napi::Object Wrtc::Init(Napi::Env env, Napi::Object exports)
+Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
 {
     Napi::Function func =
         DefineClass(env,
-                    "Wrtc",
-                    {InstanceMethod("openConnection", &Wrtc::openConnection),
-                     InstanceMethod("closeConnection", &Wrtc::closeConnection),
-                     InstanceMethod("isConnected", &Wrtc::isConnected),
-                     InstanceMethod("getUnreliableMessage", &Wrtc::getUnreliableMessage),
-                     InstanceMethod("sendUnreliableMessage", &Wrtc::sendUnreliableMessage),
-                     InstanceMethod("start", &Wrtc::start)});
+                    "XrdConnection",
+                    {InstanceMethod("openConnection", &XrdConnection::openConnection),
+                     InstanceMethod("closeConnection", &XrdConnection::closeConnection),
+                     InstanceMethod("isConnected", &XrdConnection::isConnected),
+                     InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
+                     InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
+                     InstanceMethod("start", &XrdConnection::start)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
     env.SetInstanceData(constructor);
 
-    exports.Set("Wrtc", func);
+    exports.Set("XrdConnection", func);
     return exports;
 }
 
-Wrtc::Wrtc(const Napi::CallbackInfo& info)
-: Napi::ObjectWrap<Wrtc>(info)
-{
-}
-
-
-Napi::Value Wrtc::openConnection(const Napi::CallbackInfo& info)
+XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
+: Napi::ObjectWrap<XrdConnection>(info)
 {
     Napi::Env env = info.Env();
-    constexpr size_t numArgs = 4;
-    if (info.Length() != numArgs) {
-        Napi::TypeError::New(env, "Wrong number of arguments")
+    if (info.Length() != 2) {
+        Napi::TypeError::New(env, "Wrong number of arguments. "
+                             "Need API object and XRD hardware ID.")
             .ThrowAsJavaScriptException();
     }
 
-    if (!(info[0].IsString() || info[0].IsObject())) {
-        Napi::TypeError::New(env, "Wrong argument for ICE config. Expected string or JSON object.")
+    if (!info[0].IsObject()) {
+        Napi::TypeError::New(env, "Wrong argument for API object.")
             .ThrowAsJavaScriptException();
     }
 
     if (!info[1].IsString()) {
-        Napi::TypeError::New(env, "Wrong argument for token. Expected string.")
+        Napi::TypeError::New(env, "Wrong argument for XRD hardware ID. "
+                             "Expected string.")
             .ThrowAsJavaScriptException();
     }
 
-    if (!info[2].IsString()) {
-        Napi::TypeError::New(env, "Wrong argument for XRD hardware ID. Expected string.")
+    // Hold reference to javascript object so we don't have to worry about
+    // dangling pointers.
+    Napi::Object obj = info[0].As<Napi::Object>();
+    _api =  Napi::ObjectReference::New(obj);
+    BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
+
+    std::string xrdHardwareId = info[1].As<Napi::String>();
+    _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                             xrdHardwareId);
+}
+
+
+Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t numArgs = 1;
+    if (info.Length() != numArgs) {
+        Napi::TypeError::New(env, "Wrong number of arguments. "
+                             "Need timeout argument in seconds.")
             .ThrowAsJavaScriptException();
     }
 
-    if (!info[3].IsNumber()) {
+    if (!info[0].IsNumber()) {
         Napi::TypeError::New(env, "Wrong argument for timeout in seconds. Expected number.")
             .ThrowAsJavaScriptException();
     }
 
-    std::string iceConfig;
-    if (info[0].IsObject()) {
-        iceConfig = jsonToString(env, info[0].As<Napi::Object>());
-    } else {
-        iceConfig = info[0].As<Napi::String>();
-    }
+    std::chrono::seconds timeout(info[0].As<Napi::Number>());
 
-    std::string token = info[1].As<Napi::String>();
-    std::string xrdId = info[2].As<Napi::String>();
-    std::chrono::seconds timeout(info[3].As<Napi::Number>());
-
-    // TODO(cgrahn): This can block for a few seconds. Spin off into a separate
-    // thread?
-    botlink::wrtc::WrtcConfig config;
-    config.iceConfig = iceConfig;
-    config.token = token;
-    config.xrdId = xrdId;
-    // TODO(cgrahn): Set url here or pass in from javascript?
-    config.signalUrl = prodSignalUrl;
-
-    auto future = _wrtc.openConnection(config, timeout);
+    // create function here and perform entire connection process on worker
+    // thread so that any HTTP requests by openConnection() won't block
+    // node.js's main thread.
+    // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
+    auto openFn = [&conn = *_conn, timeout] () {
+        return conn.open(timeout); };
     auto deferred = Napi::Promise::Deferred::New(env);
 
     // node.js garbage collects this
-    ConnectWorker* worker = new ConnectWorker(env, std::move(deferred), std::move(future));
+    auto* worker = new ConnectWorker<std::future<bool>()>(env, std::move(deferred), openFn);
     worker->Queue();
 
     return deferred.Promise();
 }
 
-Napi::Value Wrtc::closeConnection(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
-    bool success = _wrtc.closeConnection();
+    bool success = _conn->close();
 
     return Napi::Boolean::New(env, success);
 }
 
-Napi::Value Wrtc::isConnected(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::isConnected(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
-    bool connected = _wrtc.isConnected();
+    bool connected = _conn->isConnected();
 
     return Napi::Boolean::New(env, connected);
 }
 
-Napi::Value Wrtc::getUnreliableMessage(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::getAutopilotMessage(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     if (info.Length() != 1) {
@@ -174,7 +167,7 @@ Napi::Value Wrtc::getUnreliableMessage(const Napi::CallbackInfo& info)
 
     bool block = info[0].As<Napi::Boolean>();
 
-    std::vector<uint8_t> msg = _wrtc.getUnreliableMessage(block);
+    std::vector<uint8_t> msg = _conn->getAutopilotMessage(block);
 
     // TODO(cgrahn): Something to tie life of vector to buffer. That way we can
     // avoid the copy here.
@@ -183,7 +176,7 @@ Napi::Value Wrtc::getUnreliableMessage(const Napi::CallbackInfo& info)
     return obj;
 }
 
-Napi::Value Wrtc::sendUnreliableMessage(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     if (info.Length() != 1) {
@@ -214,14 +207,14 @@ Napi::Value Wrtc::sendUnreliableMessage(const Napi::CallbackInfo& info)
 
     // TODO(cgrahn): If implementation sends immediately, we can get rid of the
     // copy from the Buffer/Array object into a std::vector in this function and
-    // overload _wrtc.sendUnreliableMessage() to take a pointer and length
+    // overload _conn->sendAutopilotMessage() to take a pointer and length
     // arguments.
-    bool success = _wrtc.sendUnreliableMessage(msg);
+    bool success = _conn->sendAutopilotMessage(msg);
 
     return Napi::Boolean::New(env, success);
 }
 
-Napi::Value Wrtc::start(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::start(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
@@ -232,7 +225,7 @@ Napi::Value Wrtc::start(const Napi::CallbackInfo& info)
     _workerFn = Napi::ThreadSafeFunction::New(
         env,
         bound,         // JavaScript function called asynchronously
-        "Wrtc worker", // Name
+        "XrdConnection worker", // Name
         0,             // Unlimited queue
         1,             // Only one thread will use this initially
         [&workerThread = _workerThread]( Napi::Env ) { // Finalizer
@@ -240,7 +233,7 @@ Napi::Value Wrtc::start(const Napi::CallbackInfo& info)
         } );
 
     // Create a native thread
-    _workerThread = std::thread( [&fn = _workerFn, &wrtc = _wrtc] {
+    _workerThread = std::thread( [&fn = _workerFn, &conn = *_conn] {
         auto callback = []( Napi::Env env, Napi::Function jsCallback,
                             std::vector<uint8_t>* msg) {
             // Transform native data into JS data, passing it to the provided
@@ -258,7 +251,7 @@ Napi::Value Wrtc::start(const Napi::CallbackInfo& info)
             bool block = true;
 
             auto msg = std::make_unique<std::vector<uint8_t>>();
-            *msg = wrtc.getUnreliableMessage(block);
+            *msg = conn.getAutopilotMessage(block);
 
             // Perform a blocking call
             napi_status status = fn.BlockingCall(msg.release(), callback);

@@ -1,0 +1,262 @@
+#include "botlink_api_wrapper.h"
+
+#include <napi.h>
+
+#include <functional>
+
+namespace {
+
+template<class T>
+class RequestWorker : public Napi::AsyncWorker {
+public:
+    RequestWorker(Napi::Env& env,
+                  Napi::Promise::Deferred&& deferred,
+                  std::function<T()> action)
+    : Napi::AsyncWorker(env)
+    , _deferred(deferred)
+    , _action(action)
+    {}
+
+    void Execute()
+    {
+        try {
+            _result = _action();
+        } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+            SetError(e.what());
+        } catch (const botlink::Public::exception::BotlinkLogic& e) {
+            SetError(e.what());
+        }
+    }
+
+    void OnOK()
+    {
+        resolveOnOk(_result);
+    }
+
+    void OnError(const Napi::Error& error)
+    {
+        _deferred.Reject(error.Value());
+    }
+
+private:
+    Napi::Promise::Deferred _deferred;
+    T _result;
+    std::function<T()> _action;
+
+    void resolveOnOk(bool result)
+    {
+        _deferred.Resolve(Napi::Boolean::New(Env(), result));
+    }
+
+    void resolveOnOk(const std::vector<botlink::Public::Xrd>& result)
+    {
+        auto array = Napi::Array::New(Env(), result.size());
+        for (size_t i = 0; i < result.size(); ++i) {
+            auto xrd = Napi::Array::New(Env(), 2);
+            auto id = Napi::String::New(Env(), result[i].id);
+            auto name = Napi::String::New(Env(), result[i].name);
+            xrd[0u] = id;
+            xrd[1u] = name;
+            array[i] = xrd;
+        }
+        _deferred.Resolve(array);
+    }
+};
+
+}
+
+namespace botlink {
+namespace wrapper {
+
+Napi::Object BotlinkApi::Init(Napi::Env env, Napi::Object exports)
+{
+    Napi::Function func =
+        DefineClass(env,
+                    "BotlinkApi",
+                    {InstanceMethod("login", &BotlinkApi::login),
+                     InstanceMethod("refresh", &BotlinkApi::refresh),
+                     InstanceMethod("listXrds", &BotlinkApi::listXrds)});
+
+    Napi::FunctionReference* constructor = new Napi::FunctionReference;
+    *constructor = Napi::Persistent(func);
+    env.SetInstanceData(constructor);
+
+    exports.Set("BotlinkApi", func);
+    return exports;
+}
+
+BotlinkApi::BotlinkApi(const Napi::CallbackInfo& info)
+: Napi::ObjectWrap<BotlinkApi>(info)
+{
+}
+
+
+Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 3;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    constexpr size_t minArgs = 1;
+    if (info.Length() < minArgs) {
+        Napi::TypeError::New(env, "Too few arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::string usernameOrToken;
+    std::optional<std::string> password;
+    std::optional<std::chrono::seconds> timeout;
+
+    // username or token
+    if (info[0].IsString()) {
+        usernameOrToken = info[0].As<Napi::String>();
+    } else {
+        Napi::TypeError::New(env, "Wrong argument for first argument. "
+                             "Expected username or token as string.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (info.Length() >= 2) {
+        if (info[1].IsString()) {
+            password = info[1].As<Napi::String>();
+        } else if (info[1].IsNumber()) {
+            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected string for password or number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    if (info.Length() == maxArgs) {
+        if (info[2].IsNumber()) {
+            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for third argument. "
+                                 "Expected string for password or number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform entire connection process on worker
+    // thread so that any HTTP requests by login() won't block
+    // node.js's main thread.
+    // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
+    auto loginFn = [&api = _api, usernameOrToken, password, timeout] () {
+        if (password) {
+            if (timeout) {
+                api.login(usernameOrToken, *password, *timeout);
+            } else {
+                api.login(usernameOrToken, *password);
+            }
+        } else {
+            if (timeout) {
+                api.login(usernameOrToken, *timeout);
+            } else {
+                api.login(usernameOrToken);
+            }
+        }
+        return true; };
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<bool>(env, std::move(deferred), loginFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+Napi::Value BotlinkApi::refresh(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 1;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::optional<std::chrono::seconds> timeout;
+
+    if (info.Length() == maxArgs) {
+        if (info[0].IsNumber()) {
+            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform entire connection process on worker
+    // thread so that any HTTP requests by refresh() won't block
+    // node.js's main thread.
+    // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
+    auto refreshFn = [&api = _api, timeout] () {
+        if (timeout) {
+            api.refresh(*timeout);
+        } else {
+            api.refresh();
+        }
+        return true; };
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<bool>(env, std::move(deferred), refreshFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+Napi::Value BotlinkApi::listXrds(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 1;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::optional<std::chrono::seconds> timeout;
+
+    if (info.Length() == maxArgs) {
+        if (info[0].IsNumber()) {
+            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform entire connection process on worker
+    // thread so that any HTTP requests by listXrds() won't block
+    // node.js's main thread.
+    // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
+    auto listFn = [&api = _api, timeout] () {
+        if (timeout) {
+            return api.listXrds(*timeout);
+        } else {
+            return api.listXrds();
+        }};
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<std::vector<botlink::Public::Xrd>>(env, std::move(deferred), listFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+botlink::Public::BotlinkApi& BotlinkApi::getApi()
+{
+    return _api;
+}
+
+}
+}
