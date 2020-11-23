@@ -2,7 +2,7 @@
 #define BOTLINK_BOTLINK_API_WRAPPER_H
 
 #include <napi.h>
-#include <public/api.h>
+#include <botlink/api.h>
 
 namespace botlink {
 namespace wrapper {

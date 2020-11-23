@@ -2,7 +2,7 @@
 #define BOTLINK_XRD_CONNECTION_WRAPPER_H
 
 #include <napi.h>
-#include <public/api.h>
+#include <botlink/api.h>
 
 #include <memory>
 #include <thread>
