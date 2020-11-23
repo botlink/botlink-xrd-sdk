@@ -3,6 +3,7 @@
 #include <napi.h>
 
 #include <functional>
+#include <optional>
 
 namespace {
 
