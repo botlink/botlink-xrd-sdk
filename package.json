@@ -24,6 +24,6 @@
     "cmake-js": "^6.0.0"
   },
   "scripts": {
-    "build": "rm -r dist/ && tsc && cmake-js -d ./src/napi/ -O build compile"
+    "build": "rm -rf dist/ && tsc && cmake-js -d ./src/napi/ -O build compile"
   }
 }
