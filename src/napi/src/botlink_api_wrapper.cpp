@@ -52,7 +52,7 @@ private:
     void resolveOnOk(const std::vector<botlink::Public::Xrd>& result)
     {
         auto array = Napi::Array::New(Env(), result.size());
-        for (size_t i = 0; i < result.size(); ++i) {
+        for (uint32_t i = 0; i < result.size(); ++i) {
             auto xrd = Napi::Array::New(Env(), 2);
             auto id = Napi::String::New(Env(), result[i].id);
             auto name = Napi::String::New(Env(), result[i].name);

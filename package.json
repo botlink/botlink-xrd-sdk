@@ -8,20 +8,20 @@
   "license": "MIT",
   "private": false,
   "dependencies": {
+    "bindings": "^1.2.1",
     "isomorphic-fetch": "^2.2.1",
     "jsonwebtoken": "^8.5.1",
+    "node-addon-api": "^3.0.2",
     "protobufjs": "^6.8.8",
     "socket.io-client": "^2.2.0",
-    "url-template": "^2.0.8",
-    "bindings": "^1.2.1",
-    "node-addon-api": "^3.0.2"
+    "url-template": "^2.0.8"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^8.3.8",
     "@types/socket.io-client": "^1.4.32",
     "@types/url-template": "^2.0.28",
-    "typescript": "^3.4.5",
-    "cmake-js": "^6.0.0"
+    "cmake-js": "^6.0.0",
+    "typescript": "^3.4.5"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && cmake-js -d ./src/napi/ -O build compile"
