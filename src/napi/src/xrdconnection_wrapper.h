@@ -22,6 +22,8 @@ public:
 
     Napi::Value getAutopilotMessage(const Napi::CallbackInfo& info);
     Napi::Value sendAutopilotMessage(const Napi::CallbackInfo& info);
+    Napi::Value logFromGcs(const Napi::CallbackInfo& info);
+    Napi::Value logToGcs(const Napi::CallbackInfo& info);
 
     Napi::Value startEmitter(const Napi::CallbackInfo& info);
     Napi::Value stopEmitter(const Napi::CallbackInfo& info);
@@ -32,6 +34,8 @@ private:
     std::thread _workerThread;
     std::atomic<bool> _runWorkerThread;
     Napi::ThreadSafeFunction _workerFn;
+
+    Napi::Value logAutopilotMessage(const Napi::CallbackInfo& info, botlink::Public::MessageSource source);
 };
 
 }

@@ -61,7 +61,9 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("startEmitter", &XrdConnection::startEmitter),
-                     InstanceMethod("stopEmitter", &XrdConnection::stopEmitter)});
+                     InstanceMethod("stopEmitter", &XrdConnection::stopEmitter),
+                     InstanceMethod("logFromGcs", &XrdConnection::logFromGcs),
+                     InstanceMethod("logToGcs", &XrdConnection::logToGcs)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -76,7 +78,7 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 , _runWorkerThread(false)
 {
     Napi::Env env = info.Env();
-    if (info.Length() != 2) {
+    if (info.Length() < 2) {
         Napi::TypeError::New(env, "Wrong number of arguments. "
                              "Need API object and XRD hardware ID.")
             .ThrowAsJavaScriptException();
@@ -93,6 +95,11 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    bool enableLogging = false;
+    if ((info.Length() == 3) && info[2].IsBoolean()) {
+        enableLogging = info[2].As<Napi::Boolean>();
+    }
+
     // Hold reference to javascript object so we don't have to worry about
     // dangling pointers.
     Napi::Object obj = info[0].As<Napi::Object>();
@@ -101,7 +108,8 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 
     std::string xrdHardwareId = info[1].As<Napi::String>();
     _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                             xrdHardwareId);
+                                                             xrdHardwareId,
+                                                             enableLogging);
 }
 
 
@@ -229,6 +237,16 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, success);
 }
 
+Napi::Value XrdConnection::logFromGcs(const Napi::CallbackInfo& info)
+{
+    return logAutopilotMessage(info, botlink::Public::MessageSource::FromGcs);
+}
+
+Napi::Value XrdConnection::logToGcs(const Napi::CallbackInfo& info)
+{
+    return logAutopilotMessage(info, botlink::Public::MessageSource::ToGcs);
+}
+
 Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
@@ -304,6 +322,42 @@ Napi::Value XrdConnection::stopEmitter(const Napi::CallbackInfo& info)
 
     Napi::Env env = info.Env();
     return Napi::Boolean::New(env, true);
+}
+
+Napi::Value XrdConnection::logAutopilotMessage(const Napi::CallbackInfo& info,
+                                               botlink::Public::MessageSource source)
+{
+    Napi::Env env = info.Env();
+    if (info.Length() != 1) {
+        Napi::TypeError::New(env, "Wrong number of arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    // This is to match the types that xrdSocket.ts accepts (except String, we
+    // only want binary data here).
+    if (!(info[0].IsBuffer() || info[0].IsTypedArray())) {
+        Napi::TypeError::New(env, "Wrong argument. Expected Buffer or Uint8Array.")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::vector<uint8_t> msg;
+
+    if (info[0].IsBuffer()) {
+        auto obj = info[0].As<Napi::Buffer<uint8_t>>();
+        uint8_t* start = obj.Data();
+        size_t length = obj.Length();
+        msg.insert(msg.end(), start, start + length);
+    } else {
+        auto obj = info[0].As<Napi::Uint8Array>();
+        uint8_t* start = obj.Data();
+        size_t length = obj.ByteLength();
+        msg.insert(msg.end(), start, start + length);
+    }
+
+    _conn->logAutopilotMessage(source, msg);
+    bool success = true;
+
+    return Napi::Boolean::New(env, success);
 }
 
 }
