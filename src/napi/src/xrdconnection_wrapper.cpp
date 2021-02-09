@@ -71,6 +71,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
 
 XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 : Napi::ObjectWrap<XrdConnection>(info)
+, _runWorkerThread(false)
 {
     Napi::Env env = info.Env();
     if (info.Length() != 2) {
@@ -139,6 +140,8 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
 
     bool success = _conn->close();
+
+    _runWorkerThread = false;
 
     return Napi::Boolean::New(env, success);
 }
@@ -217,6 +220,15 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::start(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
+    if (_runWorkerThread) {
+        // thread is already running
+        // Only need to check this variable as node.js is
+        // single-threaded. So there's no race condition by not
+        // holding a mutex until thread is created.
+        return Napi::Boolean::New(env, true);
+    }
+    _runWorkerThread = true;
+
     Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
         .As<Napi::Function>();
     Napi::Function bound = emit.Get("bind").As<Napi::Function>()
@@ -233,7 +245,8 @@ Napi::Value XrdConnection::start(const Napi::CallbackInfo& info)
         } );
 
     // Create a native thread
-    _workerThread = std::thread( [&fn = _workerFn, &conn = *_conn] {
+    _workerThread = std::thread( [&fn = _workerFn, &conn = *_conn,
+                                  &run = _runWorkerThread] {
         auto callback = []( Napi::Env env, Napi::Function jsCallback,
                             std::vector<uint8_t>* msg) {
             // Transform native data into JS data, passing it to the provided
@@ -248,16 +261,20 @@ Napi::Value XrdConnection::start(const Napi::CallbackInfo& info)
 
         while (true)
         {
-            bool block = true;
+            const auto timeout = std::chrono::milliseconds(1000);
 
             auto msg = std::make_unique<std::vector<uint8_t>>();
-            *msg = conn.getAutopilotMessage(block);
+            *msg = conn.getAutopilotMessage(timeout);
 
-            // Perform a blocking call
-            napi_status status = fn.BlockingCall(msg.release(), callback);
-            if (status != napi_ok)
-            {
-                // Handle error
+            if (msg->size() > 0) {
+                // Perform a blocking call
+                napi_status status = fn.BlockingCall(msg.release(), callback);
+                if (status != napi_ok)
+                {
+                    // Handle error
+                    break;
+                }
+            } else if (!run) {
                 break;
             }
         }

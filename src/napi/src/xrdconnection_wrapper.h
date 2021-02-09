@@ -4,6 +4,7 @@
 #include <napi.h>
 #include <botlink/api.h>
 
+#include <atomic>
 #include <memory>
 #include <thread>
 
@@ -29,6 +30,7 @@ private:
     Napi::ObjectReference _api;
     std::unique_ptr<botlink::Public::XrdConnection> _conn;
     std::thread _workerThread;
+    std::atomic<bool> _runWorkerThread;
     Napi::ThreadSafeFunction _workerFn;
 };
 
