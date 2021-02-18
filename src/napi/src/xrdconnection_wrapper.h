@@ -23,8 +23,8 @@ public:
     Napi::Value getAutopilotMessage(const Napi::CallbackInfo& info);
     Napi::Value sendAutopilotMessage(const Napi::CallbackInfo& info);
 
-    // TODO(cgrahn): Rename to startPump? or startEmitter?
-    Napi::Value start(const Napi::CallbackInfo& info);
+    Napi::Value startEmitter(const Napi::CallbackInfo& info);
+    Napi::Value stopEmitter(const Napi::CallbackInfo& info);
 
 private:
     Napi::ObjectReference _api;

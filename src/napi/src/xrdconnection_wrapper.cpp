@@ -60,7 +60,8 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("isConnected", &XrdConnection::isConnected),
                      InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
-                     InstanceMethod("start", &XrdConnection::start)});
+                     InstanceMethod("startEmitter", &XrdConnection::startEmitter),
+                     InstanceMethod("stopEmitter", &XrdConnection::stopEmitter)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -141,8 +142,6 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
 
     bool success = _conn->close();
-
-    _runWorkerThread = false;
 
     return Napi::Boolean::New(env, success);
 }
@@ -230,7 +229,7 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, success);
 }
 
-Napi::Value XrdConnection::start(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     if (_runWorkerThread) {
@@ -296,6 +295,14 @@ Napi::Value XrdConnection::start(const Napi::CallbackInfo& info)
         fn.Release();
     } );
 
+    return Napi::Boolean::New(env, true);
+}
+
+Napi::Value XrdConnection::stopEmitter(const Napi::CallbackInfo& info)
+{
+    _runWorkerThread = false;
+
+    Napi::Env env = info.Env();
     return Napi::Boolean::New(env, true);
 }
 
