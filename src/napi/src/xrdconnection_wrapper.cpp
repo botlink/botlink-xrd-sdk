@@ -5,6 +5,7 @@
 #include <napi.h>
 
 #include <functional>
+#include <string>
 
 namespace {
 
@@ -212,7 +213,19 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
     // copy from the Buffer/Array object into a std::vector in this function and
     // overload _conn->sendAutopilotMessage() to take a pointer and length
     // arguments.
-    bool success = _conn->sendAutopilotMessage(msg);
+    bool success = false;
+    try {
+        success = _conn->sendAutopilotMessage(msg);
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(env, e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(env, e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(env, std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
 
     return Napi::Boolean::New(env, success);
 }
