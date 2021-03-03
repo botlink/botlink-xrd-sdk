@@ -62,6 +62,12 @@ private:
         }
         _deferred.Resolve(array);
     }
+
+    void resolveOnOk(const std::string&result)
+    {
+        _deferred.Resolve(Napi::String::New(Env(), result));
+    }
+
 };
 
 }
@@ -76,7 +82,9 @@ Napi::Object BotlinkApi::Init(Napi::Env env, Napi::Object exports)
                     "BotlinkApi",
                     {InstanceMethod("login", &BotlinkApi::login),
                      InstanceMethod("refresh", &BotlinkApi::refresh),
-                     InstanceMethod("listXrds", &BotlinkApi::listXrds)});
+                     InstanceMethod("listXrds", &BotlinkApi::listXrds),
+                     InstanceMethod("getRefreshToken", &BotlinkApi::getRefreshToken),
+                     InstanceMethod("getAuthToken", &BotlinkApi::getAuthToken)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -249,6 +257,89 @@ Napi::Value BotlinkApi::listXrds(const Napi::CallbackInfo& info)
 
     // node.js garbage collects this
     auto* worker = new RequestWorker<std::vector<botlink::Public::Xrd>>(env, std::move(deferred), listFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+Napi::Value BotlinkApi::getRefreshToken(const Napi::CallbackInfo& info)
+{
+    // TODO(cgrahn): Commonize this timeout checking code
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 1;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::optional<std::chrono::seconds> timeout;
+
+    if (info.Length() == maxArgs) {
+        if (info[0].IsNumber()) {
+            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform token fetching on worker
+    // thread so that any HTTP requests by getRefreshToken() won't
+    // block node.js's main thread.
+    // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
+    auto tokenFn = [&api = _api, timeout] () {
+        if (timeout) {
+            return api.getRefreshToken(*timeout);
+        } else {
+            return api.getRefreshToken();
+        }};
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<std::string>(env, std::move(deferred), tokenFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+Napi::Value BotlinkApi::getAuthToken(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 1;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::optional<std::chrono::seconds> timeout;
+
+    if (info.Length() == maxArgs) {
+        if (info[0].IsNumber()) {
+            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform token fetching on worker
+    // thread so that any HTTP requests by getAuthToken() won't block
+    // node.js's main thread.
+    // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
+    auto tokenFn = [&api = _api, timeout] () {
+        if (timeout) {
+            return api.getAuthToken(*timeout);
+        } else {
+            return api.getAuthToken();
+        }};
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<std::string>(env, std::move(deferred), tokenFn);
     worker->Queue();
 
     return deferred.Promise();
