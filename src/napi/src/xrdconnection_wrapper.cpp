@@ -4,6 +4,7 @@
 
 #include <napi.h>
 
+#include <iostream>
 #include <functional>
 #include <string>
 
@@ -14,17 +15,46 @@ class ConnectWorker : public Napi::AsyncWorker {
 public:
     ConnectWorker(Napi::Env& env,
                   Napi::Promise::Deferred&& deferred,
-                  std::function<T> action)
+                  std::function<T> action,
+                  std::atomic<bool>& cancelled,
+                  Napi::ObjectReference&& connectionRef,
+                  botlink::Public::XrdConnection& connection)
     : Napi::AsyncWorker(env)
     , _deferred(deferred)
     , _action(action)
+    , _connectionRef(std::move(connectionRef))
+    , _connection(&connection)
+    , _isCancelled(&cancelled)
     {}
 
     void Execute()
     {
         try {
             auto future = _action();
+
+            while (true) {
+                const std::future_status status = future.wait_for(std::chrono::milliseconds(100));
+                if (status == std::future_status::ready) {
+                    break;
+                } else if (status == std::future_status::timeout) {
+                    if (_isCancelled->load()) {
+                        // Still need to call cancelOpen() in case an
+                        // async race in the relay app caused the call
+                        // to cancelOpen() in closeConnection() to
+                        // happen before the call to openConnection()
+                        _connection->cancelOpen();
+                        SetError("Connection attempt cancelled");
+                        break;
+                    }
+                } else {
+                    break;
+                }
+            }
+
             _result = future.get();
+            if (!_result) {
+                SetError("Failed to start connection");
+            }
         } catch (const std::runtime_error& e) {
             SetError(e.what());
         }
@@ -32,18 +62,31 @@ public:
 
     void OnOK()
     {
-        _deferred.Resolve(Napi::Boolean::New(Env(), _result));
+        try {
+            _deferred.Resolve(Napi::Boolean::New(Env(), _result));
+        } catch (const Napi::Error& e) {
+            std::cerr << "Got error from deferred resolve: '" << e.what() << "'\n";
+        }
     }
 
     void OnError(const Napi::Error& error)
     {
-        _deferred.Reject(error.Value());
+        try {
+            _deferred.Reject(error.Value());
+        } catch (const Napi::Error& e) {
+            std::cerr << "Got error from deferred reject: '" << e.what() << "'\n";
+        }
     }
 
 private:
     Napi::Promise::Deferred _deferred;
     bool _result;
     std::function<T> _action;
+    // Hold a reference to the javascript object so we don't need to
+    // worry about lifetimes
+    Napi::ObjectReference _connectionRef;
+    botlink::Public::XrdConnection* _connection;
+    std::atomic<bool>* _isCancelled;
 };
 }
 
@@ -76,6 +119,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
 XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 : Napi::ObjectWrap<XrdConnection>(info)
 , _runWorkerThread(false)
+, _cancelConnectionAttempt(false)
 {
     Napi::Env env = info.Env();
     if (info.Length() < 2) {
@@ -128,6 +172,8 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    _cancelConnectionAttempt = false;
+
     std::chrono::seconds timeout(info[0].As<Napi::Number>());
 
     // create function here and perform entire connection process on worker
@@ -138,8 +184,11 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
         return conn.open(timeout); };
     auto deferred = Napi::Promise::Deferred::New(env);
 
+    Napi::Object obj = info.This().As<Napi::Object>();
+    Napi::ObjectReference ref = Napi::ObjectReference::New(obj, 1);
+
     // node.js garbage collects this
-    auto* worker = new ConnectWorker<std::future<bool>()>(env, std::move(deferred), openFn);
+    auto* worker = new ConnectWorker<std::future<bool>()>(env, std::move(deferred), openFn, _cancelConnectionAttempt, std::move(ref), *_conn);
     worker->Queue();
 
     return deferred.Promise();
@@ -148,6 +197,10 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
+
+    // clean up any connection that is in progress
+    _conn->cancelOpen();
+    _cancelConnectionAttempt = true;
 
     bool success = _conn->close();
 

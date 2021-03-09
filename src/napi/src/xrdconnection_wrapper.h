@@ -34,6 +34,7 @@ private:
     std::thread _workerThread;
     std::atomic<bool> _runWorkerThread;
     Napi::ThreadSafeFunction _workerFn;
+    std::atomic<bool> _cancelConnectionAttempt;
 
     Napi::Value logAutopilotMessage(const Napi::CallbackInfo& info, botlink::Public::MessageSource source);
 };
