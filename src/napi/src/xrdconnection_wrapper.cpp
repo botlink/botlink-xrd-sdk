@@ -147,7 +147,7 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     // Hold reference to javascript object so we don't have to worry about
     // dangling pointers.
     Napi::Object obj = info[0].As<Napi::Object>();
-    _api =  Napi::ObjectReference::New(obj);
+    _api =  Napi::ObjectReference::New(obj, 1);
     BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
     std::string xrdHardwareId = info[1].As<Napi::String>();
