@@ -8,6 +8,8 @@
 #include <memory>
 #include <thread>
 
+#include "video_forwarder.h"
+
 namespace botlink {
 namespace wrapper {
 
@@ -28,8 +30,12 @@ public:
     Napi::Value startEmitter(const Napi::CallbackInfo& info);
     Napi::Value stopEmitter(const Napi::CallbackInfo& info);
 
+    Napi::Value addVideoTrack(const Napi::CallbackInfo& info);
+    Napi::Value setVideoPortInternal(const Napi::CallbackInfo& info);
+
 private:
     Napi::ObjectReference _api;
+    botlink::video::Forwarder _videoForwarder;
     std::unique_ptr<botlink::Public::XrdConnection> _conn;
     std::thread _workerThread;
     std::atomic<bool> _runWorkerThread;

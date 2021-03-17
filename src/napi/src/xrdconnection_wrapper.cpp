@@ -105,6 +105,8 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("startEmitter", &XrdConnection::startEmitter),
                      InstanceMethod("stopEmitter", &XrdConnection::stopEmitter),
+                     InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
+                     InstanceMethod("setVideoPortInternal", &XrdConnection::setVideoPortInternal),
                      InstanceMethod("logFromGcs", &XrdConnection::logFromGcs),
                      InstanceMethod("logToGcs", &XrdConnection::logToGcs)});
 
@@ -374,6 +376,48 @@ Napi::Value XrdConnection::stopEmitter(const Napi::CallbackInfo& info)
     _runWorkerThread = false;
 
     Napi::Env env = info.Env();
+    return Napi::Boolean::New(env, true);
+}
+
+Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    if(!_videoForwarder.init()) {
+        Napi::Error::New(env, "Failed to initialize UDP socket for "
+                         "forwarding video.")
+            .ThrowAsJavaScriptException();
+    }
+
+    auto callback = [&forwarder = _videoForwarder]
+        (uint8_t* packet, size_t length) {
+        if (forwarder.getPort() == 0) {
+            // The video port hasn't been set yet. So do nothing.
+            return;
+        }
+
+        if (!forwarder.forward(packet, length)) {
+            std::cerr << "Error sending RTP packet over UDP\n";
+        }
+    };
+
+    _conn->addVideoTrack(callback);
+    return Napi::Boolean::New(env, true);
+}
+
+Napi::Value XrdConnection::setVideoPortInternal(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    if (!(info.Length() == 1 && info[0].IsNumber())) {
+        Napi::TypeError::New(env, "Wrong number of arguments. "
+                             "Need one argument that is a number.")
+            .ThrowAsJavaScriptException();
+    }
+
+    _videoForwarder.setPort(info[0].As<Napi::Number>().Int32Value());
+
+    std::cout << "Set internal video port to " << _videoForwarder.getPort() << "\n";
+
     return Napi::Boolean::New(env, true);
 }
 
