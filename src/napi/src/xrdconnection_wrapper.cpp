@@ -107,6 +107,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("stopEmitter", &XrdConnection::stopEmitter),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoPortInternal", &XrdConnection::setVideoPortInternal),
+                     InstanceMethod("setVideoResolutionFramerate", &XrdConnection::setVideoResolutionFramerate),
                      InstanceMethod("logFromGcs", &XrdConnection::logFromGcs),
                      InstanceMethod("logToGcs", &XrdConnection::logToGcs)});
 
@@ -423,6 +424,26 @@ Napi::Value XrdConnection::setVideoPortInternal(const Napi::CallbackInfo& info)
     _videoForwarder.setPort(info[0].As<Napi::Number>().Int32Value());
 
     return Napi::Boolean::New(env, true);
+}
+
+Napi::Value XrdConnection::setVideoResolutionFramerate(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    if (!(info.Length() == 3 && info[0].IsNumber() &&
+          info[1].IsNumber() && info[2].IsNumber())) {
+        Napi::TypeError::New(env, "Wrong number of arguments. "
+                             "Need three arguments that are numbers.")
+            .ThrowAsJavaScriptException();
+    }
+
+    const int width = info[0].As<Napi::Number>().Int32Value();
+    const int height = info[1].As<Napi::Number>().Int32Value();
+    const int rate = info[2].As<Napi::Number>().Int32Value();
+
+    bool result = _conn->setResolutionFramerate(width, height, rate);
+    // TODO(cgrahn): Need an event that indicates XRD changed video settings
+
+    return Napi::Boolean::New(env, result);
 }
 
 Napi::Value XrdConnection::logAutopilotMessage(const Napi::CallbackInfo& info,

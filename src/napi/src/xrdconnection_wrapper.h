@@ -32,6 +32,7 @@ public:
 
     Napi::Value addVideoTrack(const Napi::CallbackInfo& info);
     Napi::Value setVideoPortInternal(const Napi::CallbackInfo& info);
+    Napi::Value setVideoResolutionFramerate(const Napi::CallbackInfo& info);
 
 private:
     Napi::ObjectReference _api;
