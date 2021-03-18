@@ -1,29 +1,54 @@
 #include "video_forwarder.h"
 
-#include <iostream>
-
+#ifdef _WIN32
+#include <ws2tcpip.h>
+#else
 #include <unistd.h>
+#endif
 
 namespace botlink {
 namespace video {
 
 Forwarder::Forwarder()
+#ifdef _WIN32
+: _fd(INVALID_SOCKET)
+#else
 : _fd(-1)
+#endif
 {
 }
 
 Forwarder::~Forwarder()
 {
+#ifdef _WIN32
+    if (_fd != INVALID_SOCKET) {
+        closesocket(_fd);
+    }
+    WSACleanup();
+#else
     if (_fd > -1) {
         close(_fd);
     }
+#endif
 }
 
 bool Forwarder::init()
 {
+#ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != NO_ERROR) {
+        // TODO(cgrahn): Get error
+        fprintf(stderr, "WSAStartup() failed\n");
+        return false;
+    }
+
+    SOCKET sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sockfd == INVALID_SOCKET) {
+#else
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (sockfd == -1) {
-        std::cerr << "Failed to create UDP socket\n";
+#endif
+        fprintf(stderr, "Failed to create UDP socket for video forwarder\n");
         return false;
     }
 
@@ -34,8 +59,8 @@ bool Forwarder::init()
     _sockaddr.sin_family = AF_INET;
     _sockaddr.sin_port = htons(0);
 
-    if (inet_aton("127.0.0.1", &_sockaddr.sin_addr) == 0) {
-        std::cerr << "Failed to set address for UDP socket\n";
+    if (inet_pton(AF_INET, "127.0.0.1", &_sockaddr.sin_addr) == 0) {
+        fprintf(stderr, "Failed to set address for UDP socket\n");
         return false;
     }
 
@@ -45,7 +70,8 @@ bool Forwarder::init()
 void Forwarder::setPort(int port)
 {
     std::lock_guard<std::mutex> lock(_mutex);
-    _sockaddr.sin_port = htons(port);
+    (void)port;
+    _sockaddr.sin_port = htons(static_cast<unsigned short>(port));
 }
 
 int Forwarder::getPort() const
@@ -56,13 +82,13 @@ int Forwarder::getPort() const
         port = _sockaddr.sin_port;
     }
 
-    return ntohs(port);
+    return ntohs(static_cast<unsigned short>(port));
 }
 
-bool Forwarder::forward(uint8_t* data, size_t length)
+bool Forwarder::forward(uint8_t* data, int length)
 {
     std::lock_guard<std::mutex> lock(_mutex);
-    if (sendto(_fd, data, length,
+    if (sendto(_fd, reinterpret_cast<const char*>(data), length,
                0, (const struct sockaddr *) &_sockaddr,
                sizeof(_sockaddr)) == -1) {
         return false;

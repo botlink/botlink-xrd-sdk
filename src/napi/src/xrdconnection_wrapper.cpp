@@ -4,7 +4,6 @@
 
 #include <napi.h>
 
-#include <iostream>
 #include <functional>
 #include <string>
 
@@ -65,7 +64,8 @@ public:
         try {
             _deferred.Resolve(Napi::Boolean::New(Env(), _result));
         } catch (const Napi::Error& e) {
-            std::cerr << "Got error from deferred resolve: '" << e.what() << "'\n";
+            fprintf(stderr, "Got error from deferred resolve: '%s'\n",
+                    e.what());
         }
     }
 
@@ -74,7 +74,7 @@ public:
         try {
             _deferred.Reject(error.Value());
         } catch (const Napi::Error& e) {
-            std::cerr << "Got error from deferred reject: '" << e.what() << "'\n";
+            fprintf(stderr, "Got error from deferred reject: '%s'\n", e.what());
         }
     }
 
@@ -391,13 +391,19 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
 
     auto callback = [&forwarder = _videoForwarder]
         (uint8_t* packet, size_t length) {
+        // Uncomment following for debugging.
+        // TODO(cgrahn): Do not use std::cout. It causes a crash on
+        // Windows with "yarn dev" and is frustrating to debug. Need
+        // to figure out why.
+        // printf("Forwarding RTP packet over UDP\n");
+
         if (forwarder.getPort() == 0) {
             // The video port hasn't been set yet. So do nothing.
             return;
         }
 
-        if (!forwarder.forward(packet, length)) {
-            std::cerr << "Error sending RTP packet over UDP\n";
+        if (!forwarder.forward(packet, static_cast<int>(length))) {
+            fprintf(stderr, "Error sending RTP packet over UDP\n");
         }
     };
 
@@ -415,8 +421,6 @@ Napi::Value XrdConnection::setVideoPortInternal(const Napi::CallbackInfo& info)
     }
 
     _videoForwarder.setPort(info[0].As<Napi::Number>().Int32Value());
-
-    std::cout << "Set internal video port to " << _videoForwarder.getPort() << "\n";
 
     return Napi::Boolean::New(env, true);
 }

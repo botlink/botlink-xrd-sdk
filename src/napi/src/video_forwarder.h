@@ -3,8 +3,12 @@
 
 #include <mutex>
 
+#ifdef _WIN32
+#include <Winsock2.h>
+#else
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#endif
 
 namespace botlink {
 namespace video {
@@ -19,10 +23,14 @@ public:
     void setPort(int port);
     int getPort() const;
 
-    bool forward(uint8_t* data, size_t length);
+    bool forward(uint8_t* data, int length);
 
 private:
+#ifdef _WIN32
+    SOCKET _fd;
+#else
     int _fd;
+#endif
     sockaddr_in _sockaddr;
     mutable std::mutex _mutex;
 };

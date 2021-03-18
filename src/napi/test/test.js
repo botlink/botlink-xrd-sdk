@@ -29,9 +29,11 @@ async function connect(api) {
         let x = await api.listXrds()
         console.log(`connecting to XRD ${x[0][0]}`)
         let conn = new botlink.XrdConnection(api, x[0][0])
+	conn.addVideoTrack()
+	conn.setVideoPortInternal(61003)
         let connected = await conn.openConnection(30)
         if (connected) {
-            conn.start()
+            conn.startEmitter()
             console.log(`connected to XRD ${x[0][0]}`)
             conn.on('data', (msg) => {
                 console.log(`Callback got msg, length ${msg.length}`)})

@@ -32,7 +32,11 @@ endif ()
 
 target_link_directories(${PROJECT_NAME} PRIVATE
   $ENV{BOTLINKSDK_DIR}/lib)
-target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} botlink-cxx-client)
+if(WIN32)
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} botlink-cxx-client Ws2_32)
+else()
+  target_link_libraries(${PROJECT_NAME} ${CMAKE_JS_LIB} botlink-cxx-client)
+endif()
 
 # Include N-API wrappers
 execute_process(COMMAND node -p "require('node-addon-api').include"
