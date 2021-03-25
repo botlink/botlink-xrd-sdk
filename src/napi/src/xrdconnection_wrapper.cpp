@@ -93,6 +93,22 @@ private:
 namespace botlink {
 namespace wrapper {
 
+void VideoConfigThreadsafe::setConfig(const botlink::Public::VideoConfig& config)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    _config = config;
+}
+
+// Get the video config and clear any stored video config that was set
+// by a callback.
+std::optional<botlink::Public::VideoConfig> VideoConfigThreadsafe::getConfig()
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    std::optional<botlink::Public::VideoConfig> copy = _config;
+    _config.reset();
+    return copy;
+}
+
 Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
 {
     Napi::Function func =
@@ -107,7 +123,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("stopEmitter", &XrdConnection::stopEmitter),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoPortInternal", &XrdConnection::setVideoPortInternal),
-                     InstanceMethod("setVideoResolutionFramerate", &XrdConnection::setVideoResolutionFramerate),
+                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
                      InstanceMethod("logFromGcs", &XrdConnection::logFromGcs),
                      InstanceMethod("logToGcs", &XrdConnection::logToGcs)});
 
@@ -123,6 +139,7 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 : Napi::ObjectWrap<XrdConnection>(info)
 , _runWorkerThread(false)
 , _cancelConnectionAttempt(false)
+, _videoConfig(std::make_shared<VideoConfigThreadsafe>())
 {
     Napi::Env env = info.Env();
     if (info.Length() < 2) {
@@ -332,7 +349,8 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
 
     // Create a native thread
     _workerThread = std::thread( [&fn = _workerFn, &conn = *_conn,
-                                  &run = _runWorkerThread] {
+                                  &run = _runWorkerThread,
+                                  videoConfig = _videoConfig] {
         auto callback = []( Napi::Env env, Napi::Function jsCallback,
                             std::vector<uint8_t>* msg) {
             // Transform native data into JS data, passing it to the provided
@@ -343,6 +361,16 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
 
             // We're finished with the data.
             delete msg;
+        };
+
+        auto callbackVideo = []( Napi::Env env, Napi::Function jsCallback,
+                                 botlink::Public::VideoConfig* config) {
+            // Transform native data into JS data, passing it to the provided
+            // `jsCallback` -- the TSFN's JavaScript function.
+            // TODO(cgrahn): No object for now, add config object to Call
+            jsCallback.Call( {Napi::String::New( env, "videoConfig" )} );
+
+            delete config;
         };
 
         while (true)
@@ -362,6 +390,21 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                 }
             } else if (!run) {
                 break;
+            } else {
+                // Check for new video config
+                auto config = videoConfig->getConfig();
+                if (config) {
+                    // copy video config into dynamically allocated
+                    // object that the JS blocking call will free
+                    // later.
+                    auto copy = std::make_unique<botlink::Public::VideoConfig>(config.value());
+                    napi_status status = fn.BlockingCall(copy.release(), callbackVideo);
+                    if (status != napi_ok)
+                    {
+                        // Handle error
+                        break;
+                    }
+                }
             }
         }
 
@@ -409,6 +452,10 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
     };
 
     _conn->addVideoTrack(callback);
+    _conn->onVideoConfigReply([config = _videoConfig]
+                              (const botlink::Public::VideoConfig& newConfig)
+                              { config->setConfig(newConfig); });
+
     return Napi::Boolean::New(env, true);
 }
 
@@ -426,7 +473,7 @@ Napi::Value XrdConnection::setVideoPortInternal(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, true);
 }
 
-Napi::Value XrdConnection::setVideoResolutionFramerate(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     if (!(info.Length() == 3 && info[0].IsNumber() &&
@@ -440,7 +487,14 @@ Napi::Value XrdConnection::setVideoResolutionFramerate(const Napi::CallbackInfo&
     const int height = info[1].As<Napi::Number>().Int32Value();
     const int rate = info[2].As<Napi::Number>().Int32Value();
 
-    bool result = _conn->setResolutionFramerate(width, height, rate);
+    Public::VideoConfig config;
+    config.width = width;
+    config.height = height;
+    config.framerate = rate;
+    // TODO(cgrahn): Set codec
+    config.codec = Public::VideoCodec::Unknown;
+
+    bool result = _conn->setVideoConfig(config);
     // TODO(cgrahn): Need an event that indicates XRD changed video settings
 
     return Napi::Boolean::New(env, result);

@@ -13,6 +13,16 @@
 namespace botlink {
 namespace wrapper {
 
+class VideoConfigThreadsafe {
+public:
+    void setConfig(const botlink::Public::VideoConfig& config);
+    std::optional<botlink::Public::VideoConfig> getConfig();
+
+private:
+    std::optional<botlink::Public::VideoConfig> _config;
+    std::mutex _mutex;
+};
+
 class XrdConnection : public Napi::ObjectWrap<XrdConnection> {
 public:
     static Napi::Object Init(Napi::Env env, Napi::Object exports);
@@ -32,7 +42,7 @@ public:
 
     Napi::Value addVideoTrack(const Napi::CallbackInfo& info);
     Napi::Value setVideoPortInternal(const Napi::CallbackInfo& info);
-    Napi::Value setVideoResolutionFramerate(const Napi::CallbackInfo& info);
+    Napi::Value setVideoConfig(const Napi::CallbackInfo& info);
 
 private:
     Napi::ObjectReference _api;
@@ -42,6 +52,7 @@ private:
     std::atomic<bool> _runWorkerThread;
     Napi::ThreadSafeFunction _workerFn;
     std::atomic<bool> _cancelConnectionAttempt;
+    std::shared_ptr<VideoConfigThreadsafe> _videoConfig;
 
     Napi::Value logAutopilotMessage(const Napi::CallbackInfo& info, botlink::Public::MessageSource source);
 };
