@@ -119,8 +119,6 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("isConnected", &XrdConnection::isConnected),
                      InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
-                     InstanceMethod("startEmitter", &XrdConnection::startEmitter),
-                     InstanceMethod("stopEmitter", &XrdConnection::stopEmitter),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoPortInternal", &XrdConnection::setVideoPortInternal),
                      InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
@@ -207,6 +205,8 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
     Napi::Object obj = info.This().As<Napi::Object>();
     Napi::ObjectReference ref = Napi::ObjectReference::New(obj, 1);
 
+    startEmitter(info);
+
     // node.js garbage collects this
     auto* worker = new ConnectWorker<std::future<bool>()>(env, std::move(deferred), openFn, _cancelConnectionAttempt, std::move(ref), *_conn);
     worker->Queue();
@@ -223,6 +223,8 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
     _cancelConnectionAttempt = true;
 
     bool success = _conn->close();
+
+    stopEmitter(info);
 
     return Napi::Boolean::New(env, success);
 }
@@ -337,20 +339,25 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
     Napi::Function bound = emit.Get("bind").As<Napi::Function>()
         .Call(emit, { info.This() }).As<Napi::Function>();
 
-    _workerFn = Napi::ThreadSafeFunction::New(
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
         env,
         bound,         // JavaScript function called asynchronously
         "XrdConnection worker", // Name
         0,             // Unlimited queue
         1,             // Only one thread will use this initially
         [&workerThread = _workerThread]( Napi::Env ) { // Finalizer
-            workerThread.join();
+            // No race between joining here and joining in
+            // stopEmitter() because both are called from node.js's
+            // main thread
+            if (workerThread.joinable()) {
+                workerThread.join();
+            }
         } );
 
     // Create a native thread
-    _workerThread = std::thread( [&fn = _workerFn, &conn = *_conn,
+    _workerThread = std::thread( [fn = std::move(workerFn), &conn = *_conn,
                                   &run = _runWorkerThread,
-                                  videoConfig = _videoConfig] {
+                                  videoConfig = _videoConfig] () mutable {
         auto callback = []( Napi::Env env, Napi::Function jsCallback,
                             std::vector<uint8_t>* msg) {
             // Transform native data into JS data, passing it to the provided
@@ -418,6 +425,13 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::stopEmitter(const Napi::CallbackInfo& info)
 {
     _runWorkerThread = false;
+    // No race here because this function is always called from
+    // node.js's main thread and the finalizer for the threadsafe
+    // function (which also calls join()) is called from node.js's
+    // main thread
+    if (_workerThread.joinable()) {
+        _workerThread.join();
+    }
 
     Napi::Env env = info.Env();
     return Napi::Boolean::New(env, true);

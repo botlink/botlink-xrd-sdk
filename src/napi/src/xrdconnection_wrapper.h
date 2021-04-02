@@ -37,9 +37,6 @@ public:
     Napi::Value logFromGcs(const Napi::CallbackInfo& info);
     Napi::Value logToGcs(const Napi::CallbackInfo& info);
 
-    Napi::Value startEmitter(const Napi::CallbackInfo& info);
-    Napi::Value stopEmitter(const Napi::CallbackInfo& info);
-
     Napi::Value addVideoTrack(const Napi::CallbackInfo& info);
     Napi::Value setVideoPortInternal(const Napi::CallbackInfo& info);
     Napi::Value setVideoConfig(const Napi::CallbackInfo& info);
@@ -50,11 +47,12 @@ private:
     std::unique_ptr<botlink::Public::XrdConnection> _conn;
     std::thread _workerThread;
     std::atomic<bool> _runWorkerThread;
-    Napi::ThreadSafeFunction _workerFn;
     std::atomic<bool> _cancelConnectionAttempt;
     std::shared_ptr<VideoConfigThreadsafe> _videoConfig;
 
     Napi::Value logAutopilotMessage(const Napi::CallbackInfo& info, botlink::Public::MessageSource source);
+    Napi::Value startEmitter(const Napi::CallbackInfo& info);
+    Napi::Value stopEmitter(const Napi::CallbackInfo& info);
 };
 
 }
