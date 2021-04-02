@@ -9,6 +9,8 @@
 
 namespace {
 
+const char connectionStatusEvent[] = "connectionStatus";
+
 template<class T>
 class ConnectWorker : public Napi::AsyncWorker {
 public:
@@ -226,6 +228,15 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 
     stopEmitter(info);
 
+    if (success) {
+        Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+            .As<Napi::Function>();
+        Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+            .Call(emit, { info.This() }).As<Napi::Function>();
+        bound.Call({Napi::String::New(env, connectionStatusEvent),
+                Napi::Boolean::New(env, false)});
+    }
+
     return Napi::Boolean::New(env, success);
 }
 
@@ -380,9 +391,23 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             delete config;
         };
 
+        auto callbackConnectionStatus = []( Napi::Env env, Napi::Function jsCallback,
+                                            bool* connected) {
+            // Transform native data into JS data, passing it to the provided
+            // `jsCallback` -- the TSFN's JavaScript function.
+            // TODO(cgrahn): Use enum instead of bool?
+            jsCallback.Call({Napi::String::New(env, connectionStatusEvent),
+                    Napi::Boolean::New(env, *connected)});
+
+            delete connected;
+        };
+
+        bool connected = conn.isConnected();
+
+        auto tasksLastRan = std::chrono::steady_clock::now();
         while (true)
         {
-            const auto timeout = std::chrono::milliseconds(1000);
+            constexpr auto timeout = std::chrono::milliseconds(1000);
 
             auto msg = std::make_unique<std::vector<uint8_t>>();
             *msg = conn.getAutopilotMessage(timeout);
@@ -395,9 +420,18 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                     // Handle error
                     break;
                 }
-            } else if (!run) {
+            }
+
+            if (!run) {
                 break;
-            } else {
+            }
+
+            // Perform other periodic tasks
+            auto now = std::chrono::steady_clock::now();
+            auto timeDiff = now - tasksLastRan;
+            if (timeDiff >= timeout) {
+                tasksLastRan = now;
+
                 // Check for new video config
                 auto config = videoConfig->getConfig();
                 if (config) {
@@ -412,6 +446,18 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                         break;
                     }
                 }
+
+                bool connectedNow = conn.isConnected();
+                if (connectedNow != connected) {
+                    // emit "connectionStatus" event
+                    auto copy = std::make_unique<bool>(connectedNow);
+                    napi_status status = fn.BlockingCall(copy.release(), callbackConnectionStatus);
+                    if (status != napi_ok)
+                    {
+                        break;
+                    }
+                }
+                connected = connectedNow;
             }
         }
 
