@@ -147,12 +147,14 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    if (!info[0].IsObject()) {
+    const auto& apiJs = info[0];
+    if (!apiJs.IsObject()) {
         Napi::TypeError::New(env, "Wrong argument for API object.")
             .ThrowAsJavaScriptException();
     }
 
-    if (!info[1].IsString()) {
+    const auto& idJs = info[1];
+    if (!idJs.IsString()) {
         Napi::TypeError::New(env, "Wrong argument for XRD hardware ID. "
                              "Expected string.")
             .ThrowAsJavaScriptException();
@@ -160,11 +162,11 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 
     // Hold reference to javascript object so we don't have to worry about
     // dangling pointers.
-    Napi::Object obj = info[0].As<Napi::Object>();
+    Napi::Object obj = apiJs.As<Napi::Object>();
     _api =  Napi::ObjectReference::New(obj, 1);
     BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
-    std::string xrdHardwareId = info[1].As<Napi::String>();
+    std::string xrdHardwareId = idJs.As<Napi::String>();
     Napi::Object logger;
     if ((info.Length() == 3) && info[2].IsObject()) {
         logger = info[2].As<Napi::Object>();

@@ -120,8 +120,9 @@ Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
     std::optional<std::chrono::seconds> timeout;
 
     // username or token
-    if (info[0].IsString()) {
-        usernameOrToken = info[0].As<Napi::String>();
+    const auto& arg0 = info[0];
+    if (arg0.IsString()) {
+        usernameOrToken = arg0.As<Napi::String>();
     } else {
         Napi::TypeError::New(env, "Wrong argument for first argument. "
                              "Expected username or token as string.")
@@ -129,10 +130,11 @@ Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
     }
 
     if (info.Length() >= 2) {
-        if (info[1].IsString()) {
-            password = info[1].As<Napi::String>();
-        } else if (info[1].IsNumber()) {
-            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        const auto& arg1 = info[1];
+        if (arg1.IsString()) {
+            password = arg1.As<Napi::String>();
+        } else if (arg1.IsNumber()) {
+            timeout = std::chrono::seconds(arg1.As<Napi::Number>());
         } else {
             Napi::TypeError::New(env, "Wrong argument for second argument. "
                                  "Expected string for password or number for timeout in seconds.")
@@ -141,8 +143,9 @@ Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
     }
 
     if (info.Length() == maxArgs) {
-        if (info[2].IsNumber()) {
-            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        const auto& arg2 = info[2];
+        if (arg2.IsNumber()) {
+            timeout = std::chrono::seconds(arg2.As<Napi::Number>());
         } else {
             Napi::TypeError::New(env, "Wrong argument for third argument. "
                                  "Expected string for password or number for timeout in seconds.")
@@ -191,8 +194,9 @@ Napi::Value BotlinkApi::refresh(const Napi::CallbackInfo& info)
     std::optional<std::chrono::seconds> timeout;
 
     if (info.Length() == maxArgs) {
-        if (info[0].IsNumber()) {
-            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        const auto& arg0 = info[0];
+        if (arg0.IsNumber()) {
+            timeout = std::chrono::seconds(arg0.As<Napi::Number>());
         } else {
             Napi::TypeError::New(env, "Wrong argument for second argument. "
                                  "Expected number for timeout in seconds.")
@@ -233,8 +237,9 @@ Napi::Value BotlinkApi::listXrds(const Napi::CallbackInfo& info)
     std::optional<std::chrono::seconds> timeout;
 
     if (info.Length() == maxArgs) {
-        if (info[0].IsNumber()) {
-            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        const auto& arg0 = info[0];
+        if (arg0.IsNumber()) {
+            timeout = std::chrono::seconds(arg0.As<Napi::Number>());
         } else {
             Napi::TypeError::New(env, "Wrong argument for second argument. "
                                  "Expected number for timeout in seconds.")
@@ -275,8 +280,9 @@ Napi::Value BotlinkApi::getRefreshToken(const Napi::CallbackInfo& info)
     std::optional<std::chrono::seconds> timeout;
 
     if (info.Length() == maxArgs) {
-        if (info[0].IsNumber()) {
-            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        const auto& arg0 = info[0];
+        if (arg0.IsNumber()) {
+            timeout = std::chrono::seconds(arg0.As<Napi::Number>());
         } else {
             Napi::TypeError::New(env, "Wrong argument for second argument. "
                                  "Expected number for timeout in seconds.")
@@ -316,8 +322,9 @@ Napi::Value BotlinkApi::getAuthToken(const Napi::CallbackInfo& info)
     std::optional<std::chrono::seconds> timeout;
 
     if (info.Length() == maxArgs) {
-        if (info[0].IsNumber()) {
-            timeout = std::chrono::seconds(info[1].As<Napi::Number>());
+        const auto& arg0 = info[0];
+        if (arg0.IsNumber()) {
+            timeout = std::chrono::seconds(arg0.As<Napi::Number>());
         } else {
             Napi::TypeError::New(env, "Wrong argument for second argument. "
                                  "Expected number for timeout in seconds.")
