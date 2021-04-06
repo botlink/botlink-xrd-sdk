@@ -10,7 +10,11 @@
 
 namespace {
 
-const char connectionStatusEvent[] = "connectionStatus";
+namespace connectionStatus {
+const char connected[] = "Connected";
+const char disconnected[] = "Disconnected";
+const char event[] = "connectionStatus";
+}
 
 template<class T>
 class ConnectWorker : public Napi::AsyncWorker {
@@ -244,8 +248,8 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
             .As<Napi::Function>();
         Napi::Function bound = emit.Get("bind").As<Napi::Function>()
             .Call(emit, { info.This() }).As<Napi::Function>();
-        bound.Call({Napi::String::New(env, connectionStatusEvent),
-                Napi::Boolean::New(env, false)});
+        bound.Call({Napi::String::New(env, connectionStatus::event),
+                Napi::String::New(env, connectionStatus::disconnected)});
     }
 
     return Napi::Boolean::New(env, success);
@@ -397,8 +401,13 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             // Transform native data into JS data, passing it to the provided
             // `jsCallback` -- the TSFN's JavaScript function.
             // TODO(cgrahn): Use enum instead of bool?
-            jsCallback.Call({Napi::String::New(env, connectionStatusEvent),
-                    Napi::Boolean::New(env, *connected)});
+            if (*connected) {
+                jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                        Napi::String::New(env, connectionStatus::connected)});
+            } else {
+                jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                        Napi::String::New(env, connectionStatus::disconnected)});
+            }
 
             delete connected;
         };
