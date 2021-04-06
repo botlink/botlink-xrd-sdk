@@ -1,6 +1,7 @@
 #include "xrdconnection_wrapper.h"
 
 #include "botlink_api_wrapper.h"
+#include "logger_wrapper.h"
 
 #include <napi.h>
 
@@ -123,9 +124,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoPortInternal", &XrdConnection::setVideoPortInternal),
-                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
-                     InstanceMethod("logFromGcs", &XrdConnection::logFromGcs),
-                     InstanceMethod("logToGcs", &XrdConnection::logToGcs)});
+                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -159,11 +158,6 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    bool enableLogging = false;
-    if ((info.Length() == 3) && info[2].IsBoolean()) {
-        enableLogging = info[2].As<Napi::Boolean>();
-    }
-
     // Hold reference to javascript object so we don't have to worry about
     // dangling pointers.
     Napi::Object obj = info[0].As<Napi::Object>();
@@ -171,9 +165,24 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
     std::string xrdHardwareId = info[1].As<Napi::String>();
-    _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                             xrdHardwareId,
-                                                             enableLogging);
+    Napi::Object logger;
+    if ((info.Length() == 3) && info[2].IsObject()) {
+        logger = info[2].As<Napi::Object>();
+        // Hold reference to javascript object so we don't have to worry about
+        // a dangling pointer in the lambda we create.
+        _logger =  Napi::ObjectReference::New(logger, 1);
+        XrdLogger* loggerWrapper = Napi::ObjectWrap<XrdLogger>::Unwrap(logger);
+        Public::XrdConnection::LogMessageFn logFn = [logger = loggerWrapper]
+            (Public::MessageSource source, const std::vector<uint8_t>& message) -> void {
+            logger->logMessage(static_cast<uint8_t>(source), message);
+        };
+        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                                 xrdHardwareId,
+                                                                 logFn);
+    } else {
+        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                                 xrdHardwareId);
+    }
 }
 
 
@@ -321,16 +330,6 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
     }
 
     return Napi::Boolean::New(env, success);
-}
-
-Napi::Value XrdConnection::logFromGcs(const Napi::CallbackInfo& info)
-{
-    return logAutopilotMessage(info, botlink::Public::MessageSource::FromGcs);
-}
-
-Napi::Value XrdConnection::logToGcs(const Napi::CallbackInfo& info)
-{
-    return logAutopilotMessage(info, botlink::Public::MessageSource::ToGcs);
 }
 
 Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
@@ -558,42 +557,6 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
     // TODO(cgrahn): Need an event that indicates XRD changed video settings
 
     return Napi::Boolean::New(env, result);
-}
-
-Napi::Value XrdConnection::logAutopilotMessage(const Napi::CallbackInfo& info,
-                                               botlink::Public::MessageSource source)
-{
-    Napi::Env env = info.Env();
-    if (info.Length() != 1) {
-        Napi::TypeError::New(env, "Wrong number of arguments")
-            .ThrowAsJavaScriptException();
-    }
-
-    // This is to match the types that xrdSocket.ts accepts (except String, we
-    // only want binary data here).
-    if (!(info[0].IsBuffer() || info[0].IsTypedArray())) {
-        Napi::TypeError::New(env, "Wrong argument. Expected Buffer or Uint8Array.")
-            .ThrowAsJavaScriptException();
-    }
-
-    std::vector<uint8_t> msg;
-
-    if (info[0].IsBuffer()) {
-        auto obj = info[0].As<Napi::Buffer<uint8_t>>();
-        uint8_t* start = obj.Data();
-        size_t length = obj.Length();
-        msg.insert(msg.end(), start, start + length);
-    } else {
-        auto obj = info[0].As<Napi::Uint8Array>();
-        uint8_t* start = obj.Data();
-        size_t length = obj.ByteLength();
-        msg.insert(msg.end(), start, start + length);
-    }
-
-    _conn->logAutopilotMessage(source, msg);
-    bool success = true;
-
-    return Napi::Boolean::New(env, success);
 }
 
 }

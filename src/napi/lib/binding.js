@@ -6,3 +6,4 @@ inherits(Botlink.XrdConnection, EventEmitter)
 
 module.exports.XrdConnection = Botlink.XrdConnection
 module.exports.Api = Botlink.BotlinkApi
+module.exports.XrdLogger = Botlink.XrdLogger
