@@ -53,11 +53,11 @@ private:
     {
         auto array = Napi::Array::New(Env(), result.size());
         for (uint32_t i = 0; i < result.size(); ++i) {
-            auto xrd = Napi::Array::New(Env(), 2);
+            auto xrd = Napi::Object::New(Env());
             auto id = Napi::String::New(Env(), result[i].id);
             auto name = Napi::String::New(Env(), result[i].name);
-            xrd[0u] = id;
-            xrd[1u] = name;
+            xrd.Set("id", id);
+            xrd.Set("name", name);
             array[i] = xrd;
         }
         _deferred.Resolve(array);
