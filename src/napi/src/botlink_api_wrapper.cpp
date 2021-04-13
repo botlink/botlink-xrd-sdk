@@ -54,8 +54,10 @@ private:
         auto array = Napi::Array::New(Env(), result.size());
         for (uint32_t i = 0; i < result.size(); ++i) {
             auto xrd = Napi::Object::New(Env());
-            auto id = Napi::String::New(Env(), result[i].id);
+            auto hardwareId = Napi::String::New(Env(), result[i].hardwareId);
+            auto id = Napi::Number::New(Env(), result[i].id);
             auto name = Napi::String::New(Env(), result[i].name);
+            xrd.Set("hardwareId", hardwareId);
             xrd.Set("id", id);
             xrd.Set("name", name);
             array[i] = xrd;

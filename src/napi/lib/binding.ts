@@ -9,7 +9,8 @@ export enum XrdConnectionStatus {
 }
 
 export type Xrd = {
-  id: string
+  id: number,
+  hardwareId: string,
   name: string
 }
 
