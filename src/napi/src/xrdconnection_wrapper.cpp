@@ -157,10 +157,10 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    const auto& idJs = info[1];
-    if (!idJs.IsString()) {
-        Napi::TypeError::New(env, "Wrong argument for XRD hardware ID. "
-                             "Expected string.")
+    const auto& xrdJs = info[1];
+    if (!xrdJs.IsObject()) {
+        Napi::TypeError::New(env, "Wrong argument for XRD. "
+                             "Expected object.")
             .ThrowAsJavaScriptException();
     }
 
@@ -170,7 +170,11 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     _api =  Napi::ObjectReference::New(obj, 1);
     BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
-    std::string xrdHardwareId = idJs.As<Napi::String>();
+    Public::Xrd xrd;
+    xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
+    xrd.hardwareId = xrdJs.As<Napi::Object>().Get("hardwareId").As<Napi::String>();
+    xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int64Value();
+
     Napi::Object logger;
     if ((info.Length() == 3) && info[2].IsObject()) {
         logger = info[2].As<Napi::Object>();
@@ -183,11 +187,11 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
             logger->logMessage(static_cast<uint8_t>(source), message);
         };
         _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                                 xrdHardwareId,
+                                                                 xrd,
                                                                  logFn);
     } else {
         _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                                 xrdHardwareId);
+                                                                 xrd);
     }
 }
 
