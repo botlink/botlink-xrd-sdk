@@ -52,10 +52,11 @@ export interface XrdConnectionBindings {
   // This configures the connection to have a video track. This must
   // be called before openConnection if video is desired.
   addVideoTrack (): boolean
-  // This is the UDP port used to forward RTP stream from WebRTC media track
-  setVideoPortInternal (port: number): boolean
   // TODO(cgrahn): Update to add codec parameter when C++ is updated
   setVideoConfig (width: number, height: number, framerate: number): boolean
+  // This is the UDP port used to forward RTP stream from WebRTC media
+  // track. The address defaults to localhost.
+  setVideoForwardPort(port: number, address?: string): boolean
 }
 
 // See MessageSource enum in api.h from C++ SDK

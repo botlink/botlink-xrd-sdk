@@ -127,7 +127,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
-                     InstanceMethod("setVideoPortInternal", &XrdConnection::setVideoPortInternal),
+                     InstanceMethod("setVideoForwardPort", &XrdConnection::setVideoForwardPort),
                      InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
@@ -533,7 +533,7 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, true);
 }
 
-Napi::Value XrdConnection::setVideoPortInternal(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::setVideoForwardPort(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
     if (!(info.Length() == 1 && info[0].IsNumber())) {

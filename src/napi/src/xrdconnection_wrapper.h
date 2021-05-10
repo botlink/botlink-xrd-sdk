@@ -37,7 +37,7 @@ public:
     Napi::Value sendAutopilotMessage(const Napi::CallbackInfo& info);
 
     Napi::Value addVideoTrack(const Napi::CallbackInfo& info);
-    Napi::Value setVideoPortInternal(const Napi::CallbackInfo& info);
+    Napi::Value setVideoForwardPort(const Napi::CallbackInfo& info);
     Napi::Value setVideoConfig(const Napi::CallbackInfo& info);
 
 private:
