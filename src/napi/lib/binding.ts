@@ -77,17 +77,16 @@ export interface XrdConnectionBindings {
   setVideoConfig(config: XrdVideoConfig): boolean
 }
 
-// See MessageSource enum in api.h from C++ SDK
 export enum XrdLoggerSource {
-  NotDefined = 0,
-  FromGcs = 7,
-  ToGcs = 8
+  Unknown = 'Unknown',
+  FromGcs = 'FromGcs',
+  ToGcs = 'ToGcs'
 }
 
 export interface XrdLoggerBindings {
   new(path: string): XrdLoggerBindings
 
-  logMessage (source: number, message: Buffer): void
+  logMessage(source: XrdLoggerSource, message: Buffer): void
 }
 
 inherits(CxxClient.XrdConnection, EventEmitter)
