@@ -1,4 +1,4 @@
-const Botlink = require('bindings')('botlink-cxx-client-bindings')
+const CxxClient = require('bindings')('botlink-cxx-client-bindings')
 import { EventEmitter } from 'events'
 import { inherits } from 'util'
 
@@ -71,10 +71,10 @@ export interface XrdLoggerBindings {
   logMessage (source: number, message: Buffer): void
 }
 
-inherits(Botlink.XrdConnection, EventEmitter)
+inherits(CxxClient.XrdConnection, EventEmitter)
 
-let Api: ApiBindings = Botlink.BotlinkApi
-let XrdConnection: XrdConnectionBindings = Botlink.XrdConnection
-let XrdLogger: XrdLoggerBindings = Botlink.XrdLogger
+let BotlinkApi: ApiBindings = CxxClient.BotlinkApi
+let XrdConnection: XrdConnectionBindings = CxxClient.XrdConnection
+let XrdLogger: XrdLoggerBindings = CxxClient.XrdLogger
 
-export { Api, XrdConnection, XrdLogger }
+export { BotlinkApi, XrdConnection, XrdLogger }
