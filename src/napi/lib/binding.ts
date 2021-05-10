@@ -26,7 +26,7 @@ export interface ApiBindings {
 }
 
 export interface XrdConnectionBindings {
-  new(api: ApiBindings, xrdId: string, binaryLogger?: any): XrdConnectionBindings
+  new(api: ApiBindings, xrd: Xrd, binaryLogger?: XrdLoggerBindings): XrdConnectionBindings
 
   openConnection (connectionTimeoutInSeconds: number): Promise<boolean>
   closeConnection (): boolean
