@@ -173,7 +173,7 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     Public::Xrd xrd;
     xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
     xrd.hardwareId = xrdJs.As<Napi::Object>().Get("hardwareId").As<Napi::String>();
-    xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int64Value();
+    xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int32Value();
 
     Napi::Object logger;
     if ((info.Length() == 3) && info[2].IsObject()) {
