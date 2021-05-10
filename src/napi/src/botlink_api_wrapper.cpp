@@ -105,7 +105,7 @@ BotlinkApi::BotlinkApi(const Napi::CallbackInfo& info)
 Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    constexpr size_t maxArgs = 3;
+    constexpr size_t maxArgs = 2;
     if (info.Length() > maxArgs) {
         Napi::TypeError::New(env, "Too many arguments")
             .ThrowAsJavaScriptException();
@@ -123,33 +123,37 @@ Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
 
     // username or token
     const auto& arg0 = info[0];
-    if (arg0.IsString()) {
-        usernameOrToken = arg0.As<Napi::String>();
-    } else {
+    if (!arg0.IsObject()) {
         Napi::TypeError::New(env, "Wrong argument for first argument. "
-                             "Expected username or token as string.")
+                             "Expected ApiLogin object.")
             .ThrowAsJavaScriptException();
     }
 
-    if (info.Length() >= 2) {
-        const auto& arg1 = info[1];
-        if (arg1.IsString()) {
-            password = arg1.As<Napi::String>();
-        } else if (arg1.IsNumber()) {
-            timeout = std::chrono::seconds(arg1.As<Napi::Number>());
+    try {
+        auto loginCredentials = arg0.As<Napi::Object>();
+        if (loginCredentials.Has("token")) {
+            usernameOrToken = loginCredentials.Get("token").As<Napi::String>();
+        } else if (loginCredentials.Has("username") &&
+                   loginCredentials.Has("password")) {
+            usernameOrToken = loginCredentials.Get("username").As<Napi::String>();
+            password = loginCredentials.Get("password").As<Napi::String>();
         } else {
-            Napi::TypeError::New(env, "Wrong argument for second argument. "
-                                 "Expected string for password or number for timeout in seconds.")
+            Napi::TypeError::New(env, "ApiLogin object needs to contain token "
+                                 "or username and password.")
                 .ThrowAsJavaScriptException();
         }
+    } catch (const Napi::Error& error) {
+        Napi::Error::New(env, "Got exception parsing ApiLogin object: " +
+                         error.Message())
+            .ThrowAsJavaScriptException();
     }
 
     if (info.Length() == maxArgs) {
-        const auto& arg2 = info[2];
-        if (arg2.IsNumber()) {
-            timeout = std::chrono::seconds(arg2.As<Napi::Number>());
+        const auto& arg1 = info[1];
+        if (arg1.IsNumber()) {
+            timeout = std::chrono::seconds(arg1.As<Napi::Number>());
         } else {
-            Napi::TypeError::New(env, "Wrong argument for third argument. "
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
                                  "Expected string for password or number for timeout in seconds.")
                 .ThrowAsJavaScriptException();
         }

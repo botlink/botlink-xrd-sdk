@@ -14,11 +14,21 @@ export type Xrd = {
   name: string
 }
 
+export interface ApiLoginUsername {
+  username: string,
+  password: string
+}
+
+// Can be auth or refresh token
+export interface ApiLoginToken {
+  token: string
+}
+
 export interface ApiBindings {
   new(): ApiBindings
 
-  login (usernameOrToken: string, passwordOrTimeoutSeconds?: string | number, timeoutSeconds?: number): Promise<boolean>
   refresh (timeoutSeconds?: number): Promise<boolean>
+  login(auth: ApiLoginUsername | ApiLoginToken, timeoutSeconds?: number): Promise<boolean>
 
   listXrds (timeoutSeconds?: number): Promise<Array<Xrd>>
   getRefreshToken (timeoutSeconds?: number): Promise<string>
