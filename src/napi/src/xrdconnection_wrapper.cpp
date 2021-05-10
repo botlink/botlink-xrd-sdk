@@ -395,7 +395,27 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             // Transform native data into JS data, passing it to the provided
             // `jsCallback` -- the TSFN's JavaScript function.
             // TODO(cgrahn): No object for now, add config object to Call
-            jsCallback.Call( {Napi::String::New( env, "videoConfig" )} );
+            auto videoConfig = Napi::Object::New(env);
+            videoConfig.Set("width", Napi::Value::From(env, config->width));
+            videoConfig.Set("height", Napi::Value::From(env, config->height));
+            videoConfig.Set("framerate", Napi::Value::From(env, config->framerate));
+
+            switch (config->codec) {
+                // Note that the strings we use for the value in the call to
+                // Set() must match the values in the XrdVideoCodec enum in
+                // binding.ts
+                case botlink::Public::VideoCodec::H264:
+                    videoConfig.Set("codec", Napi::Value::From(env, "H264"));
+                    break;
+                case botlink::Public::VideoCodec::H265:
+                    videoConfig.Set("codec", Napi::Value::From(env, "H265"));
+                    break;
+                default:
+                    videoConfig.Set("codec", Napi::Value::From(env, "Unknown"));
+                    break;
+            }
+
+            jsCallback.Call( {Napi::String::New( env, "videoConfig" ), videoConfig} );
 
             delete config;
         };
@@ -550,23 +570,34 @@ Napi::Value XrdConnection::setVideoForwardPort(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    if (!(info.Length() == 3 && info[0].IsNumber() &&
-          info[1].IsNumber() && info[2].IsNumber())) {
+    if (!(info.Length() == 1 && info[0].IsObject())) {
         Napi::TypeError::New(env, "Wrong number of arguments. "
-                             "Need three arguments that are numbers.")
+                             "Expected XrdVideoConfig object.")
             .ThrowAsJavaScriptException();
     }
 
-    const int width = info[0].As<Napi::Number>().Int32Value();
-    const int height = info[1].As<Napi::Number>().Int32Value();
-    const int rate = info[2].As<Napi::Number>().Int32Value();
-
     Public::VideoConfig config;
-    config.width = width;
-    config.height = height;
-    config.framerate = rate;
-    // TODO(cgrahn): Set codec
-    config.codec = Public::VideoCodec::Unknown;
+
+    try {
+        const auto videoConfig = info[0].As<Napi::Object>();
+        config.width = videoConfig.Get("width").As<Napi::Number>().Int32Value();
+        config.height = videoConfig.Get("height").As<Napi::Number>().Int32Value();
+        config.framerate = videoConfig.Get("framerate").As<Napi::Number>().Int32Value();
+
+        // The strings we check here must match XrdVideoCodec in binding.ts
+        const std::string codec = videoConfig.Get("codec").As<Napi::String>();
+        if (codec == "H264") {
+            config.codec = Public::VideoCodec::H264;
+        } else if (codec == "H265") {
+            config.codec = Public::VideoCodec::H265;
+        } else {
+            config.codec = Public::VideoCodec::Unknown;
+        }
+    } catch (const Napi::Error& error) {
+        Napi::Error::New(env, "Got exception parsing XrdVideoConfig object: " +
+                         error.Message())
+            .ThrowAsJavaScriptException();
+    }
 
     bool result = _conn->setVideoConfig(config);
     // TODO(cgrahn): Need an event that indicates XRD changed video settings

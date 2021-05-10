@@ -14,6 +14,19 @@ export type Xrd = {
   name: string
 }
 
+export enum XrdVideoCodec {
+  Unknown = 'Unknown',
+  H264 = 'H264',
+  H265 = 'H265'
+}
+
+export interface XrdVideoConfig {
+  width: number,
+  height: number,
+  framerate: number,
+  codec: XrdVideoCodec
+}
+
 export interface ApiLoginUsername {
   username: string,
   password: string
@@ -35,6 +48,12 @@ export interface ApiBindings {
   getAuthToken (timeoutSeconds?: number): Promise<string>
 }
 
+export enum XrdConnectionEvents {
+  Data = 'data',
+  ConnectionStatus = 'connectionStatus',
+  VideoConfig = 'videoConfig'
+}
+
 export interface XrdConnectionBindings {
   new(api: ApiBindings, xrd: Xrd, binaryLogger?: XrdLoggerBindings): XrdConnectionBindings
 
@@ -42,21 +61,20 @@ export interface XrdConnectionBindings {
   closeConnection (): boolean
   isConnected (): boolean
 
-  on (event: 'data', callback: (data: Buffer) => void): void
-  on (event: 'connectionStatus', callback: (data: XrdConnectionStatus) => void): void
-  // TODO(cgrahn): Change string to VideoConfig object when C++ is updated
-  on (event: 'videoConfig', callback: (data: string) => void): void
+  on(event: XrdConnectionEvents.Data, callback: (data: Buffer) => void): void
+  on(event: XrdConnectionEvents.ConnectionStatus, callback: (data: XrdConnectionStatus) => void): void
+  on(event: XrdConnectionEvents.VideoConfig, callback: (data: XrdVideoConfig) => void): void
 
   sendAutopilotMessage (data: Buffer): boolean
 
   // This configures the connection to have a video track. This must
   // be called before openConnection if video is desired.
   addVideoTrack (): boolean
-  // TODO(cgrahn): Update to add codec parameter when C++ is updated
-  setVideoConfig (width: number, height: number, framerate: number): boolean
   // This is the UDP port used to forward RTP stream from WebRTC media
   // track. The address defaults to localhost.
   setVideoForwardPort(port: number, address?: string): boolean
+
+  setVideoConfig(config: XrdVideoConfig): boolean
 }
 
 // See MessageSource enum in api.h from C++ SDK
