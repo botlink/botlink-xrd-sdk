@@ -27,6 +27,26 @@ export interface Xrd {
 }
 
 /**
+ * Video resolutions that can be selected for RTP stream
+ */
+export enum XrdVideoResolution {
+  Unsupported = 'Unsupported',
+  /** 256x144 */
+  Resolution_144 = '144',
+  /** 426x240 */
+  Resolution_240 = '240',
+  /** 640x360 */
+  Resolution_360 = '360',
+  /** 854x480 */
+  Resolution_480 = '480',
+  /** 1280x720 */
+  Resolution_720 = '720',
+  /** 1920x1080 */
+  Resolution_1080 = '1080',
+  /** 3840x2160 */
+  Resolution_4k = '4k'
+}
+/**
  * Codecs used by the XRD to encode video.
  */
 export enum XrdVideoCodec {
@@ -35,18 +55,12 @@ export enum XrdVideoCodec {
   H265 = 'H265'
 }
 
-// TODO(cgrahn): Change width and height to take an enum instead, e.g., 480p, etc.
 /**
  * Interface for an object used to configure the RTP stream sent from an XRD.
  */
 export interface XrdVideoConfig {
-  /** The resolution width */
-  width: number,
-  /** The resolution height */
-  height: number,
-  /** The video framerate */
+  resolution: XrdVideoResolution
   framerate: number,
-  /** The codec to use for encoding the RTP stream */
   codec: XrdVideoCodec
 }
 

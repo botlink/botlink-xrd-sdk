@@ -10,6 +10,9 @@
 
 namespace {
 
+std::pair<int, int> resolutionStringToInt(const std::string& resolution);
+std::string resolutionIntToString(const int width, const int height);
+
 namespace connectionStatus {
 const char connected[] = "Connected";
 const char disconnected[] = "Disconnected";
@@ -396,8 +399,9 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             // `jsCallback` -- the TSFN's JavaScript function.
             // TODO(cgrahn): No object for now, add config object to Call
             auto videoConfig = Napi::Object::New(env);
-            videoConfig.Set("width", Napi::Value::From(env, config->width));
-            videoConfig.Set("height", Napi::Value::From(env, config->height));
+            const std::string resolution = resolutionIntToString(config->width,
+                                                                 config->height);
+            videoConfig.Set("resolution", Napi::Value::From(env, resolution));
             videoConfig.Set("framerate", Napi::Value::From(env, config->framerate));
 
             switch (config->codec) {
@@ -580,8 +584,11 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
 
     try {
         const auto videoConfig = info[0].As<Napi::Object>();
-        config.width = videoConfig.Get("width").As<Napi::Number>().Int32Value();
-        config.height = videoConfig.Get("height").As<Napi::Number>().Int32Value();
+
+        const std::string resolution = videoConfig.Get("resolution").As<Napi::String>();
+        const auto resolutionInt = resolutionStringToInt(resolution);
+        config.width = resolutionInt.first;
+        config.height = resolutionInt.second;
         config.framerate = videoConfig.Get("framerate").As<Napi::Number>().Int32Value();
 
         // The strings we check here must match XrdVideoCodec in binding.ts
@@ -606,4 +613,64 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
 }
 
 }
+}
+
+namespace {
+
+// TODO(cgrahn): The resolution mapping done by the two functions here could be
+// moved to the C++ SDK.
+
+// The values used in this function must match XrdVideoResolution in binding.ts
+std::pair<int, int> resolutionStringToInt(const std::string& resolution)
+{
+    int width = 0;
+    int height = 0;
+    if (resolution == "144") {
+        width = 256;
+        height = 144;
+    } else if (resolution == "240") {
+        width = 426;
+        height = 240;
+    } else if (resolution == "360") {
+        width = 640;
+        height = 360;
+    } else if (resolution == "480") {
+        width = 854;
+        height = 480;
+    } else if (resolution == "720") {
+        width = 1280;
+        height = 720;
+    } else if (resolution == "1080") {
+        width = 1920;
+        height = 1080;
+    } else if (resolution == "4k") {
+        width = 3840;
+        height = 2160;
+    }
+
+    return { width, height };
+}
+
+// The values used in this function must match XrdVideoResolution in binding.ts
+std::string resolutionIntToString(const int width, const int height)
+{
+    std::string resolution = "Unsupported";
+    if ((width == 256) && (height == 144)) {
+        resolution = "144";
+    } else if ((width == 426) && (height == 240)) {
+        resolution = "240";
+    } else if ((width == 640) && (height == 360)) {
+        resolution = "360";
+    } else if ((width == 854) && (height == 480)) {
+        resolution = "480";
+    } else if ((width == 1280) && (height == 720)) {
+        resolution = "720";
+    } else if ((width == 1920) && (height == 1080)) {
+        resolution = "1080";
+    } else if ((width == 3840) && (height == 2160)) {
+        resolution = "4k";
+    }
+    return resolution;
+}
+
 }
