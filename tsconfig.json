@@ -61,5 +61,9 @@
     "node_modules",
     "dist",
     "example"
-  ]
+  ],
+  "typedocOptions": {
+    "entryPoints": ["src/napi/lib/binding.ts"],
+    "out": "docs"
+  }
 }
