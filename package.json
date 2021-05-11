@@ -14,6 +14,7 @@
     "node-addon-api": "^3.0.2",
     "protobufjs": "^6.8.8",
     "socket.io-client": "^2.2.0",
+    "typedoc": "^0.20.36",
     "url-template": "^2.0.8"
   },
   "devDependencies": {
@@ -21,7 +22,7 @@
     "@types/socket.io-client": "^1.4.32",
     "@types/url-template": "^2.0.28",
     "cmake-js": "^6.0.0",
-    "typescript": "^3.4.5"
+    "typescript": "^3.9.0"
   },
   "scripts": {
     "build": "rm -rf dist/ && tsc && rm -rf build/ && cmake-js -d ./src/napi/ -O build compile"
