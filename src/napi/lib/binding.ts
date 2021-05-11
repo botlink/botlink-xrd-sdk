@@ -270,11 +270,11 @@ export interface XrdConnectionBindings {
  */
 export enum XrdLoggerSource {
   /** Autopilot message is from an unknown source. */
-  Unknown = 'Unknown',
+  Unknown = 0,
   /** Autopilot message received from the Ground Control Software */
-  FromGcs = 'FromGcs',
+  FromGcs = 7,
   /** Autopilot message sent to the Ground Control Software */
-  ToGcs = 'ToGcs'
+  ToGcs = 8
 }
 
 /**

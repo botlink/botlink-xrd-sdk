@@ -52,23 +52,11 @@ Napi::Value XrdLogger::logMessage(const Napi::CallbackInfo& info)
 
     // TODO(cgrahn): Expose an enum for the source tag?
     const auto& sourceJs = info[0];
-    if (!(sourceJs.IsString())) {
+    if (!(sourceJs.IsNumber())) {
         Napi::TypeError::New(env, "Wrong argument. Expected an XrdLoggerSource "
                              "enum indicating the source of the message "
                              "being logged.")
             .ThrowAsJavaScriptException();
-    }
-
-    // TODO(cgrahn): Document where these values come from
-    constexpr uint8_t unknown = 0;
-    constexpr uint8_t fromGcs = 7;
-    constexpr uint8_t toGcs = 8;
-    uint8_t source = unknown;
-    const std::string sourceString = sourceJs.As<Napi::String>();
-    if (sourceString == "FromGcs") {
-        source = fromGcs;
-    } else if (sourceString == "ToGcs") {
-        source = toGcs;
     }
 
     // This is to match the types that xrdSocket.ts accepts (except String, we
@@ -94,7 +82,8 @@ Napi::Value XrdLogger::logMessage(const Napi::CallbackInfo& info)
         msg.insert(msg.end(), start, start + length);
     }
 
-    logMessage(source, msg);
+    logMessage(static_cast<uint8_t>(sourceJs.As<Napi::Number>().Uint32Value()),
+               msg);
 
     // equivalent to returning void
     return env.Undefined();
