@@ -168,8 +168,8 @@ export interface ApiBindings {
  * See [[`XrdConnectionBindings.on`]] for registering callbacks.
  */
 export enum XrdConnectionEvents {
-  /** Event when the connection received an autopilot message from the XRD. TODO(cgrahn): Rename this. */
-  Data = 'data',
+  /** Event when the connection received an autopilot message from the XRD. */
+  AutopilotMessage = 'autopilotMessage',
   /** Event when the status of the connection to the XRD changes. */
   ConnectionStatus = 'connectionStatus',
   /** Event when the connection received a video configuration message from the XRD. */
@@ -221,9 +221,9 @@ export interface XrdConnectionBindings {
   /**
    * Register callbacks for [[`XrdConnectionEvents`]].
    */
-  on(event: XrdConnectionEvents.Data, callback: (data: Buffer) => void): void
-  on(event: XrdConnectionEvents.ConnectionStatus, callback: (data: XrdConnectionStatus) => void): void
-  on(event: XrdConnectionEvents.VideoConfig, callback: (data: XrdVideoConfig) => void): void
+  on(event: XrdConnectionEvents.AutopilotMessage, callback: (message: Buffer) => void): void
+  on(event: XrdConnectionEvents.ConnectionStatus, callback: (status: XrdConnectionStatus) => void): void
+  on(event: XrdConnectionEvents.VideoConfig, callback: (config: XrdVideoConfig) => void): void
   /**
    * Send an autopilot message to the XRD.
    *

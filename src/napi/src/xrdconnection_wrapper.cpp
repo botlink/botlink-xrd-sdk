@@ -387,7 +387,7 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             // `jsCallback` -- the TSFN's JavaScript function.
             Napi::Buffer<uint8_t> obj =
                 Napi::Buffer<uint8_t>::Copy(env, &(*msg)[0], msg->size());
-            jsCallback.Call( {Napi::String::New( env, "data" ), obj} );
+            jsCallback.Call( {Napi::String::New( env, "autopilotMessage" ), obj} );
 
             // We're finished with the data.
             delete msg;
