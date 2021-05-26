@@ -23,7 +23,7 @@ template<class T>
 class ConnectWorker : public Napi::AsyncWorker {
 public:
     ConnectWorker(Napi::Env& env,
-                  Napi::Promise::Deferred&& deferred,
+                  Napi::Promise::Deferred deferred,
                   std::function<T> action,
                   std::atomic<bool>& cancelled,
                   Napi::ObjectReference&& connectionRef,
@@ -90,7 +90,7 @@ public:
 
 private:
     Napi::Promise::Deferred _deferred;
-    bool _result;
+    std::atomic<bool> _result;
     std::function<T> _action;
     // Hold a reference to the javascript object so we don't need to
     // worry about lifetimes
@@ -232,7 +232,7 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
     startEmitter(info);
 
     // node.js garbage collects this
-    auto* worker = new ConnectWorker<std::future<bool>()>(env, std::move(deferred), openFn, _cancelConnectionAttempt, std::move(ref), *_conn);
+    auto* worker = new ConnectWorker<std::future<bool>()>(env, deferred, openFn, _cancelConnectionAttempt, std::move(ref), *_conn);
     worker->Queue();
 
     return deferred.Promise();
