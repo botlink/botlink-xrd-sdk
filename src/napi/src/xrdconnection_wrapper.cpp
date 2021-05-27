@@ -368,13 +368,9 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
         "XrdConnection worker", // Name
         0,             // Unlimited queue
         1,             // Only one thread will use this initially
-        [&workerThread = _workerThread]( Napi::Env ) { // Finalizer
-            // No race between joining here and joining in
-            // stopEmitter() because both are called from node.js's
-            // main thread
-            if (workerThread.joinable()) {
-                workerThread.join();
-            }
+        []( Napi::Env ) { // Finalizer
+            // Do nothing. closeConnection() calls stopEmitter(),
+            // which cleans up the thread.
         } );
 
     // Create a native thread
