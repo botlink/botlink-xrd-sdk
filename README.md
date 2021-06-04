@@ -172,3 +172,33 @@ xrdSocket.on("connect", () => {
 
 xrdSocket.connect();
 ```
+
+## TypeDoc
+
+The SDK includes [TypeDoc](https://typedoc.org/) documentation.
+
+### Building
+
+To build the TypeDoc documentation, run `yarn build-typedoc`. Note that this
+deletes the `dist/` folder as for some reason TypeDoc does not like to run if
+`dist/` exists. The resulting TypeDoc documentation is in `docs/`. It can be
+viewed by opening `docs/index.html` in a web browser.
+
+### Updating TypeDoc on GitHub Pages
+
+The TypeDoc documentation is available at https://botlink.github.io/botlink-xrd-sdk/typedoc/index.html.
+
+To update the TypeDoc documentation on botlink-xrd-sdk's GitHub pages website, do the following:
+1. Follow the steps under "Building"
+1. Make sure the `botlink-xrd-sdk-gh-pages` submodule is up to date
+   * `git submodule update --init --recursive`
+   * `cd botlink-xrd-sdk-gh-pages`
+   * `git fetch`
+   * `git checkout -b gh-pages origin/gh-pages` or `git merge --ff-only origin/gh-pages` if a local branch already exists and is checked out
+1. Update the TypeDoc documentation in `botlink-xrd-sdk-gh-pages`
+   * `cd botlink-xrd-sdk-gh-pages`
+   * `git rm -r typedoc`
+   * `mv ../docs ./typedoc`
+   * `git add typedoc`
+   * `git commit` and write an appropriate commit message
+   * `git push origin gh-pages`

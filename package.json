@@ -25,6 +25,7 @@
     "typescript": "^3.9.0"
   },
   "scripts": {
-    "build": "rm -rf dist/ && tsc && rm -rf build/ && cmake-js -d ./src/napi/ -O build compile"
+    "build": "rm -rf dist/ && tsc && rm -rf build/ && cmake-js -D -d ./src/napi/ -O build compile",
+    "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none"
   }
 }
