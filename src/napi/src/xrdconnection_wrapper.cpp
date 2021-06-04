@@ -160,23 +160,14 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    const auto& xrdJs = info[1];
-    if (!xrdJs.IsObject()) {
-        Napi::TypeError::New(env, "Wrong argument for XRD. "
-                             "Expected object.")
-            .ThrowAsJavaScriptException();
-    }
-
     // Hold reference to javascript object so we don't have to worry about
     // dangling pointers.
     Napi::Object obj = apiJs.As<Napi::Object>();
     _api =  Napi::ObjectReference::New(obj, 1);
     BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
-    Public::Xrd xrd;
-    xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
-    xrd.hardwareId = xrdJs.As<Napi::Object>().Get("hardwareId").As<Napi::String>();
-    xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int32Value();
+    const auto& xrdJs = info[1];
+    Public::Xrd xrd = xrdJsToCxx(env, xrdJs);
 
     Napi::Object logger;
     if ((info.Length() == 3) && info[2].IsObject()) {

@@ -160,6 +160,32 @@ export interface ApiBindings {
    * @returns The auth token
    */
   getAuthToken(timeoutSeconds?: number): Promise<string>
+  /**
+   * Register an XRD with the authenticated account.
+   *
+   * This method throws an exception if registration failed
+   *
+   * @param xrdId The hardware ID of the XRD to register
+   *
+   * @param timeoutSeconds How long to wait to register the XRD before timing
+   *                       out, uses default timeout if not specified.
+   *
+   * @returns boolean, true if successful
+   */
+  registerXrd(xrdId: string, timeoutSeconds?: number): Promise<boolean>
+  /**
+   * Deregisters an XRD from the authenticated account.
+   *
+   * This method throws an exception if deregistration failed
+   *
+   * @param xrd The XRD to deregister
+   *
+   * @param timeoutSeconds How long to wait to deregister the XRD before timing
+   *                       out, uses default timeout if not specified.
+   *
+   * @returns boolean, true if successful
+   */
+  deregisterXrd(xrd: Xrd, timeoutSeconds?: number): Promise<boolean>
 }
 
 /**

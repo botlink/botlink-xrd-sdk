@@ -86,7 +86,9 @@ Napi::Object BotlinkApi::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("refresh", &BotlinkApi::refresh),
                      InstanceMethod("listXrds", &BotlinkApi::listXrds),
                      InstanceMethod("getRefreshToken", &BotlinkApi::getRefreshToken),
-                     InstanceMethod("getAuthToken", &BotlinkApi::getAuthToken)});
+                     InstanceMethod("getAuthToken", &BotlinkApi::getAuthToken),
+                     InstanceMethod("registerXrd", &BotlinkApi::registerXrd),
+                     InstanceMethod("deregisterXrd", &BotlinkApi::deregisterXrd)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -358,9 +360,116 @@ Napi::Value BotlinkApi::getAuthToken(const Napi::CallbackInfo& info)
     return deferred.Promise();
 }
 
+Napi::Value BotlinkApi::registerXrd(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 2;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    const auto& arg0 = info[0];
+    if (!arg0.IsString()) {
+            Napi::TypeError::New(env, "Wrong argument for first argument. "
+                                 "Expected XRD hardware ID as string.")
+                .ThrowAsJavaScriptException();
+
+    }
+
+    std::string xrdId = arg0.As<Napi::String>();
+
+    std::optional<std::chrono::seconds> timeout;
+    if (info.Length() == maxArgs) {
+        const auto& arg1 = info[1];
+        if (arg1.IsNumber()) {
+            timeout = std::chrono::seconds(arg1.As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform registration on worker thread
+    // so that any HTTP requests won't block node.js's main thread.
+    auto registerFn = [&api = _api, xrdId, timeout] () -> bool {
+        if (timeout) {
+            return api.registerXrd(xrdId, *timeout);
+        } else {
+            return api.registerXrd(xrdId);
+        }};
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<bool>(env, std::move(deferred), registerFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+Napi::Value BotlinkApi::deregisterXrd(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 2;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    const auto& xrdJs = info[0];
+    Public::Xrd xrd = xrdJsToCxx(env, xrdJs);
+
+    std::optional<std::chrono::seconds> timeout;
+    if (info.Length() == maxArgs) {
+        const auto& arg1 = info[1];
+        if (arg1.IsNumber()) {
+            timeout = std::chrono::seconds(arg1.As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform deregistration on worker thread
+    // so that any HTTP requests won't block node.js's main thread.
+    auto deregisterFn = [&api = _api, xrd, timeout] () -> bool {
+        if (timeout) {
+            return api.deregisterXrd(xrd, *timeout);
+        } else {
+            return api.deregisterXrd(xrd);
+        }};
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<bool>(env, std::move(deferred), deregisterFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
 botlink::Public::BotlinkApi& BotlinkApi::getApi()
 {
     return _api;
+}
+
+botlink::Public::Xrd xrdJsToCxx(Napi::Env& env, const Napi::Value& xrdJs)
+{
+    if (!xrdJs.IsObject()) {
+        Napi::TypeError::New(env, "Wrong argument for XRD. "
+                             "Expected object.")
+            .ThrowAsJavaScriptException();
+    }
+
+    Public::Xrd xrd;
+    xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
+    xrd.hardwareId = xrdJs.As<Napi::Object>().Get("hardwareId").As<Napi::String>();
+    xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int32Value();
+
+    return xrd;
 }
 
 }
