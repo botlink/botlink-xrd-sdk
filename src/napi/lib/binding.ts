@@ -1,4 +1,4 @@
-const CxxClient = require('bindings')('botlink-cxx-client-bindings')
+const CxxClient = require('bindings')('botlink-xrd-sdk-bindings')
 import { EventEmitter } from 'events'
 import { inherits } from 'util'
 
