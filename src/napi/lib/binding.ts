@@ -1,4 +1,9 @@
-const CxxClient = require('bindings')('botlink-xrd-sdk-bindings')
+//const CxxClient = require('bindings')('botlink_xrd_sdk_bindings')
+var binary = require('@mapbox/node-pre-gyp');
+var path = require('path');
+// top-level directory starting from dist/src/napi/lib
+var binding_path = binary.find(path.resolve(path.join(__dirname, '../../../.././package.json')));
+const CxxClient = require(binding_path);
 import { EventEmitter } from 'events'
 import { inherits } from 'util'
 

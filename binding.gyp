@@ -1,6 +1,6 @@
 {
   "targets": [{
-      "target_name": "botlink-xrd-sdk-bindings",
+      "target_name": "botlink_xrd_sdk_bindings",
       "sources": ["src/napi/src/addon.cpp", "src/napi/src/botlink_api_wrapper.cpp",
                   "src/napi/src/logger_wrapper.cpp", "src/napi/src/video_forwarder.cpp",
                   "src/napi/src/xrdconnection_wrapper.cpp"],
@@ -9,7 +9,7 @@
         "node_modules/node-addon-api",
         "$(BOTLINKSDK_DIR)/include"
       ],
-      "defines": ["NAPI_CPP_EXCEPTIONS", "NAPI_VERSION=6"],
+      "defines": ["NAPI_CPP_EXCEPTIONS", "NAPI_VERSION=<(napi_build_version)"],
       'conditions': [
           ['OS=="linux"', {
               "cflags!": ["-fno-exceptions"],
@@ -20,7 +20,7 @@
               "libraries": ["-lbotlink-cxx-client"],
               "copies":[
                     {
-                        'destination': './build/Release',
+                        'destination': '<(module_path)',
                         'files': ["<!@(python -c \"import os; sdklibdir = os.getenv('BOTLINKSDK_DIR'); sdklibdir = os.path.join(sdklibdir, 'lib'); print(' '.join([os.path.join(sdklibdir, '%s') % x for x in os.listdir(sdklibdir) if '.so' in x]))\")"]
                     }
               ]
@@ -33,7 +33,7 @@
               "libraries": ["-lbotlink-cxx-client"],
               "copies":[
                     {
-                        'destination': './build/Release',
+                        'destination': '<(module_path)',
                         'files': ["<!@(python -c \"import os; sdklibdir = os.getenv('BOTLINKSDK_DIR'); sdklibdir = os.path.join(sdklibdir, 'lib'); print(' '.join([os.path.join(sdklibdir, '%s') % x for x in os.listdir(sdklibdir) if '.dylib' in x]))\")"]
                     }
               ]
@@ -52,11 +52,22 @@
 	      "libraries": [ "-lbotlink-cxx-client.lib", "-lWs2_32.lib" ],
               "copies":[
                     {
-                        'destination': './build/Release',
+                        'destination': '<(module_path)',
                         'files': ["$(BOTLINKSDK_DIR)/bin/botlink-cxx-client.dll", "$(BOTLINKSDK_DIR)/bin/libcrypto-1_1-x64.dll", "$(BOTLINKSDK_DIR)/bin/libssl-1_1-x64.dll"]
                     }
               ]
           }]
       ],
+  },
+  {
+      "target_name": "action_after_build",
+      "type": "none",
+      "dependencies": [ "<(module_name)" ],
+      "copies": [
+        {
+          "destination": "<(module_path)",
+          "files": [ "<(PRODUCT_DIR)/<(module_name).node" ]
+        }
+      ]
   }]
 }

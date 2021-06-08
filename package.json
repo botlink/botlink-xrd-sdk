@@ -1,6 +1,6 @@
 {
   "name": "botlink-xrd-sdk",
-  "version": "0.2.0-rc.2",
+  "version": "0.3.0-testing",
   "description": "Components for interacting with Botlink's XRD services",
   "main": "dist/index.js",
   "repository": "https://github.com/botlink/botlink-xrd-sdk",
@@ -8,13 +8,17 @@
   "license": "MIT",
   "private": false,
   "dependencies": {
-    "bindings": "^1.2.1",
+    "@mapbox/node-pre-gyp": "^1.0.5",
+    "env-cmd": "^10.1.0",
+    "gunzip-maybe": "^1.4.2",
     "isomorphic-fetch": "^2.2.1",
     "jsonwebtoken": "^8.5.1",
     "node-addon-api": "^3.0.2",
     "node-gyp": "^8.1.0",
+    "npm-run-all": "^4.1.5",
     "protobufjs": "^6.8.8",
     "socket.io-client": "^2.2.0",
+    "tar-fs": "^2.1.1",
     "typedoc": "^0.20.36",
     "url-template": "^2.0.8"
   },
@@ -22,10 +26,24 @@
     "@types/jsonwebtoken": "^8.3.8",
     "@types/socket.io-client": "^1.4.32",
     "@types/url-template": "^2.0.28",
+    "aws-sdk": "^2.923.0",
     "typescript": "^3.9.0"
   },
   "scripts": {
+    "setup-cxx-sdk": "env-cmd -f .sdkversion node scripts/setup-cxx-sdk.js",
+    "install-bindings": "env-cmd -f .sdkpath node-pre-gyp install --fallback-to-build",
+    "install": "run-s setup-cxx-sdk install-bindings",
     "build": "rm -rf dist/ && tsc",
+    "rebuild-bindings": "env-cmd -f .sdkpath node-pre-gyp install --build-from-source",
     "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none"
+  },
+  "binary": {
+    "module_name": "botlink_xrd_sdk_bindings",
+    "module_path": "./lib/binding/napi-v{napi_build_version}",
+    "remote_path": "./botlink-xrd-sdk/bindings/v{version}/{configuration}-napi-v{napi_build_version}/",
+    "host": "https://xrdtray.s3.amazonaws.com/",
+    "napi_versions": [
+      6
+    ]
   }
 }
