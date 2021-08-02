@@ -7,21 +7,21 @@
       "include_dirs": [
         "<!(node -e \"require('node-addon-api').include\")",
         "node_modules/node-addon-api",
-        "$(BOTLINKSDK_DIR)/include"
+        "<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdkincludedir())\")"
       ],
-      "defines": ["NAPI_CPP_EXCEPTIONS", "NAPI_VERSION=<(napi_build_version)"],
+      "defines": ["NAPI_CPP_EXCEPTIONS", "NAPI_VERSION=6"],
       'conditions': [
           ['OS=="linux"', {
               "cflags!": ["-fno-exceptions"],
               "cflags_cc!": ["-fno-exceptions"],
               "cflags_cc": ["-Wall", "-Wextra", "-pedantic", "-Werror", "-std=c++17"],
-              "ldflags": ["-L<!(echo $BOTLINKSDK_DIR)/lib",
+              "ldflags": ["-L<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdklibdir())\")",
                           "-Wl,-rpath,'$$ORIGIN'"],
               "libraries": ["-lbotlink-cxx-client"],
               "copies":[
                     {
                         'destination': '<(module_path)',
-                        'files': ["<!@(python -c \"import os; sdklibdir = os.getenv('BOTLINKSDK_DIR'); sdklibdir = os.path.join(sdklibdir, 'lib'); print(' '.join([os.path.join(sdklibdir, '%s') % x for x in os.listdir(sdklibdir) if '.so' in x]))\")"]
+                        'files': ["<!@(python -c \"from scripts import find_sdk; sdklibdir = find_sdk.print_deps_to_copy()\")"]
                     }
               ]
           }],
@@ -29,12 +29,12 @@
               "xcode_settings": {"GCC_ENABLE_CPP_EXCEPTIONS": "YES",
                                  "MACOSX_DEPLOYMENT_TARGET": "10.15",
                                  "OTHER_CFLAGS": ["-Wall", "-Wextra", "-pedantic", "-Werror", "-std=c++17"],
-                                 "OTHER_LDFLAGS": ["-L<!(echo $BOTLINKSDK_DIR)/lib", "-Wl,-rpath,@loader_path"]},
+                                 "OTHER_LDFLAGS": ["-L<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdklibdir())\")", "-Wl,-rpath,@loader_path"]},
               "libraries": ["-lbotlink-cxx-client"],
               "copies":[
                     {
                         'destination': '<(module_path)',
-                        'files': ["<!@(python -c \"import os; sdklibdir = os.getenv('BOTLINKSDK_DIR'); sdklibdir = os.path.join(sdklibdir, 'lib'); print(' '.join([os.path.join(sdklibdir, '%s') % x for x in os.listdir(sdklibdir) if '.dylib' in x]))\")"]
+                        'files': ["<!@(python -c \"from scripts import find_sdk; sdklibdir = find_sdk.print_deps_to_copy()\")"]
                     }
               ]
           }],
@@ -46,14 +46,14 @@
 		      "ExceptionHandling": "1"
 		  },
 		  "VCLinkerTool": {
-		    "AdditionalLibraryDirectories": [ "$(BOTLINKSDK_DIR)/lib" ]
+		    "AdditionalLibraryDirectories": [ "<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdklibdir())\")" ]
 		  }
 	      },
 	      "libraries": [ "-lbotlink-cxx-client.lib", "-lWs2_32.lib" ],
               "copies":[
                     {
                         'destination': '<(module_path)',
-                        'files': ["$(BOTLINKSDK_DIR)/bin/botlink-cxx-client.dll", "$(BOTLINKSDK_DIR)/bin/libcrypto-1_1-x64.dll", "$(BOTLINKSDK_DIR)/bin/libssl-1_1-x64.dll"]
+                        'files': ["<!@(python -c \"from scripts import find_sdk; sdklibdir = find_sdk.print_deps_to_copy()\")"]
                     }
               ]
           }]

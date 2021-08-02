@@ -39,11 +39,8 @@
   },
   "binary": {
     "module_name": "botlink_xrd_sdk_bindings",
-    "module_path": "./lib/binding/napi-v{napi_build_version}",
-    "remote_path": "./botlink-xrd-sdk/bindings/v{version}/{configuration}-napi-v{napi_build_version}/",
-    "host": "https://xrdtray.s3.amazonaws.com/",
-    "napi_versions": [
-      6
-    ]
+    "module_path": "./lib/binding/napi-v6",
+    "remote_path": "./botlink-xrd-sdk/bindings/v{version}/{configuration}-napi-v6/",
+    "host": "https://xrdtray.s3.amazonaws.com/"
   }
 }
