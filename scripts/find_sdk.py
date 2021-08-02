@@ -41,6 +41,14 @@ def get_sdkincludedir():
     return sdklibdir
 
 
+def print_sdkincludedir():
+    print(repr(get_sdkincludedir()))
+
+
+def print_sdklibdir():
+    print(repr(get_sdklibdir()))
+
+
 def print_deps_to_copy():
     """Print shared libraries that need to be copied from the C++ SDK."""
     deps = []
@@ -57,7 +65,7 @@ def print_deps_to_copy():
         deps = [os.path.join(sdkbindir, 'botlink-cxx-client.dll'),
                 os.path.join(sdkbindir, 'libcrypto-1_1-x64.dll'),
                 os.path.join(sdkbindir, 'libssl-1_1-x64.dll')]
-        deps = ' '.join(deps)
+        deps = ' '.join([repr(x) for x in deps])
     else:
         raise Exception('Unsupported platform')
 

@@ -6,7 +6,7 @@
                   "src/napi/src/xrdconnection_wrapper.cpp"],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
-        "<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdkincludedir())\")"
+        "<!@(python -c \"from scripts import find_sdk; find_sdk.print_sdkincludedir()\")",
       ],
       "defines": ["NAPI_CPP_EXCEPTIONS", "NAPI_VERSION=6"],
       'conditions': [
@@ -45,7 +45,7 @@
 		      "ExceptionHandling": "1"
 		  },
 		  "VCLinkerTool": {
-		    "AdditionalLibraryDirectories": [ "<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdklibdir())\")" ]
+		    "AdditionalLibraryDirectories": [ "<!@(python -c \"from scripts import find_sdk; print(find_sdk.print_sdklibdir())\")" ]
 		  }
 	      },
 	      "libraries": [ "-lbotlink-cxx-client.lib", "-lWs2_32.lib" ],
