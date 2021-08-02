@@ -5,7 +5,7 @@
                   "src/napi/src/logger_wrapper.cpp", "src/napi/src/video_forwarder.cpp",
                   "src/napi/src/xrdconnection_wrapper.cpp"],
       "include_dirs": [
-        "<!(node -e \"require('node-addon-api').include\")",
+        "<!(node -p \"require('node-addon-api').include\")",
         "node_modules/node-addon-api",
         "<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdkincludedir())\")"
       ],
