@@ -46,17 +46,18 @@ def print_deps_to_copy():
     deps = []
     if platform.system() == 'Darwin':
         sdklibdir = get_sdklibdir()
-        deps = ' '.join([os.path.join(sdklibdir, x)
+        deps = ', '.join([os.path.join(sdklibdir, x)
                          for x in os.listdir(sdklibdir) if '.dylib' in x])
     elif platform.system() == 'Linux':
         sdklibdir = get_sdklibdir()
-        deps = ' '.join([os.path.join(sdklibdir, x)
+        deps = ', '.join([os.path.join(sdklibdir, x)
                          for x in os.listdir(sdklibdir) if '.so' in x])
     elif platform.system() == 'Windows':
         sdkbindir = get_sdkbindir()
         deps = [os.path.join(sdkbindir, 'botlink-cxx-client.dll'),
                 os.path.join(sdkbindir, 'libcrypto-1_1-x64.dll'),
                 os.path.join(sdkbindir, 'libssl-1_1-x64.dll')]
+        deps = ', '.join(deps)
     else:
         raise Exception('Unsupported platform')
 
