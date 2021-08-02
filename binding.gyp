@@ -5,8 +5,7 @@
                   "src/napi/src/logger_wrapper.cpp", "src/napi/src/video_forwarder.cpp",
                   "src/napi/src/xrdconnection_wrapper.cpp"],
       "include_dirs": [
-        "<!(node -p \"require('node-addon-api').include\")",
-        "node_modules/node-addon-api",
+        "<!@(node -p \"require('node-addon-api').include\")",
         "<!@(python -c \"from scripts import find_sdk; print(find_sdk.get_sdkincludedir())\")"
       ],
       "defines": ["NAPI_CPP_EXCEPTIONS", "NAPI_VERSION=6"],
