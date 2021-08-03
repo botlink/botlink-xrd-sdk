@@ -9,6 +9,9 @@
   "private": false,
   "dependencies": {
     "@mapbox/node-pre-gyp": "^1.0.5",
+    "@types/jsonwebtoken": "^8.3.8",
+    "@types/socket.io-client": "^1.4.32",
+    "@types/url-template": "^2.0.28",
     "env-cmd": "^10.1.0",
     "gunzip-maybe": "^1.4.2",
     "isomorphic-fetch": "^2.2.1",
@@ -20,19 +23,16 @@
     "socket.io-client": "^2.2.0",
     "tar-fs": "^2.1.1",
     "typedoc": "^0.20.36",
+    "typescript": "^3.9.0",
     "url-template": "^2.0.8"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^8.3.8",
-    "@types/socket.io-client": "^1.4.32",
-    "@types/url-template": "^2.0.28",
-    "aws-sdk": "^2.923.0",
-    "typescript": "^3.9.0"
+    "aws-sdk": "^2.923.0"
   },
   "scripts": {
     "setup-cxx-sdk": "env-cmd -f .sdkversion node scripts/setup-cxx-sdk.js",
     "install-bindings": "env-cmd -f .sdkpath node-pre-gyp install --fallback-to-build",
-    "install": "run-s setup-cxx-sdk install-bindings",
+    "install": "run-s setup-cxx-sdk install-bindings build",
     "build": "rm -rf dist/ && tsc",
     "rebuild-bindings": "env-cmd -f .sdkpath node-pre-gyp install --build-from-source",
     "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none"
