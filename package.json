@@ -1,6 +1,6 @@
 {
   "name": "botlink-xrd-sdk",
-  "version": "0.3.0-testing",
+  "version": "0.3.0",
   "description": "Components for interacting with Botlink's XRD services",
   "main": "dist/index.js",
   "repository": "https://github.com/botlink/botlink-xrd-sdk",
