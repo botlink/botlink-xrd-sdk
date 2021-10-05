@@ -20,10 +20,11 @@
     "node-gyp": "^8.1.0",
     "npm-run-all": "^4.1.5",
     "protobufjs": "^6.8.8",
+    "rimraf": "^3.0.2",
     "socket.io-client": "^2.2.0",
     "tar-fs": "^2.1.1",
     "typedoc": "^0.20.36",
-    "typescript": "^3.9.0",
+    "typescript": "^4.4.3",
     "url-template": "^2.0.8"
   },
   "devDependencies": {
@@ -33,7 +34,7 @@
     "setup-cxx-sdk": "env-cmd -f .sdkversion node scripts/setup-cxx-sdk.js",
     "install-bindings": "env-cmd -f .sdkpath node-pre-gyp install --fallback-to-build",
     "install": "run-s setup-cxx-sdk install-bindings build",
-    "build": "rm -rf dist/ && tsc",
+    "build": "rimraf dist/ && tsc",
     "rebuild-bindings": "env-cmd -f .sdkpath node-pre-gyp install --build-from-source",
     "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none"
   },
