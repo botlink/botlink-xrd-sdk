@@ -465,7 +465,15 @@ botlink::Public::Xrd xrdJsToCxx(Napi::Env& env, const Napi::Value& xrdJs)
     }
 
     Public::Xrd xrd;
-    xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
+    // The XRD does not always have a name assigned in the backend database. So
+    // handle exception here (usually caused by "name" being set to undefined or
+    // null).
+    try {
+        xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
+    } catch (Napi::Error& e) {
+        (void) e;
+        xrd.name = "";
+    }
     xrd.hardwareId = xrdJs.As<Napi::Object>().Get("hardwareId").As<Napi::String>();
     xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int32Value();
 
