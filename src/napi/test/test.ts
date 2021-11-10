@@ -3,6 +3,7 @@ import { ApiBindings, XrdConnectionBindings } from '../lib/binding'
 import { ApiLoginUsername, ApiLoginToken } from '../lib/binding'
 import { XrdConnectionEvents, XrdVideoCodec, XrdVideoConfig } from '../lib/binding'
 import { XrdVideoResolution } from '../lib/binding'
+import { BotlinkApiEvents } from '../lib/binding'
 
 let sendPeriodic = (conn: XrdConnectionBindings) => {
   console.log('sending autopilot message')
@@ -79,6 +80,10 @@ async function connect(api: ApiBindings) {
 
 async function main() {
   let api = new BotlinkApi()
+  api.on(BotlinkApiEvents.NewTokens, ({ auth, refresh }) => {
+    console.log(`Got auth token: ${auth}`)
+    console.log(`Got refresh token: ${refresh}`)
+  })
 
   if (process.argv.length === 3) {
     // script called directly, e.g., "/path/to/test.js"
