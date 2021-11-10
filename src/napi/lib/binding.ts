@@ -8,6 +8,15 @@ import { EventEmitter } from 'events'
 import { inherits } from 'util'
 
 /**
+ * Events emitted by BotlinkApi
+ *
+ * [[`BotlinkApi`]] emits these
+ */
+export enum BotlinkApiEvents {
+  NewTokens = 'NewTokens'
+}
+
+/**
  * The status of a connection to an XRD.
  *
  * [[`XrdConnection`]] emits this as part of an
@@ -116,6 +125,10 @@ export interface ApiBindings {
    * @returns `true` if logged in successfully, `false` otherwise
    */
   login(auth: ApiLoginUsername | ApiLoginToken, timeoutSeconds?: number): Promise<boolean>
+  /**
+   * Register callbacks for [[`BotlinkApiEvents`]].
+   */
+  on(event: BotlinkApiEvents.NewTokens, callback: (tokens: { auth: string, refresh: string }) => void): void
   /**
    * Refresh the tokens.
    *
@@ -325,6 +338,7 @@ export interface XrdLoggerBindings {
   logMessage(source: XrdLoggerSource, message: Buffer): void
 }
 
+inherits(CxxClient.BotlinkApi, EventEmitter)
 inherits(CxxClient.XrdConnection, EventEmitter)
 
 /** C++ implementation of [[`ApiBindings`]] */
