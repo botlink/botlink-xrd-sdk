@@ -161,9 +161,9 @@ Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
         }
     }
 
-    // create function here and perform entire connection process on worker
-    // thread so that any HTTP requests by login() won't block
-    // node.js's main thread.
+    // This creates a function here which is then used to perform the
+    // entire connection process on a worker thread. That way any HTTP
+    // requests made by login() don't block node.js's main thread.
     // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
     auto loginFn = [&api = _api, usernameOrToken, password, timeout] () {
         if (password) {
