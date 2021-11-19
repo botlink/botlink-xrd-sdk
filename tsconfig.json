@@ -60,7 +60,8 @@
   "exclude": [
     "node_modules",
     "dist",
-    "example"
+    "example",
+    "botlink-xrd-sdk-gh-pages"
   ],
   "typedocOptions": {
     "entryPoints": ["src/napi/lib/binding.ts"],

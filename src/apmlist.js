@@ -14,7 +14,11 @@ export const messages = $root.messages = (() => {
      * @exports messages
      * @namespace
      */
-    const messages = {};
+    const messages = {
+      AutopilotMessage: null,
+      AutopilotMessageList: null,
+      DateTimeOffsetSurrogate: null
+    };
 
     messages.AutopilotMessage = (function() {
 
