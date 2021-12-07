@@ -89,7 +89,8 @@ Napi::Object BotlinkApi::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("getRefreshToken", &BotlinkApi::getRefreshToken),
                      InstanceMethod("getAuthToken", &BotlinkApi::getAuthToken),
                      InstanceMethod("registerXrd", &BotlinkApi::registerXrd),
-                     InstanceMethod("deregisterXrd", &BotlinkApi::deregisterXrd)});
+                     InstanceMethod("deregisterXrd", &BotlinkApi::deregisterXrd),
+                     InstanceMethod("updateXrdName", &BotlinkApi::updateXrdName)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -487,6 +488,58 @@ Napi::Value BotlinkApi::deregisterXrd(const Napi::CallbackInfo& info)
 
     // node.js garbage collects this
     auto* worker = new RequestWorker<bool>(env, std::move(deferred), deregisterFn);
+    worker->Queue();
+
+    return deferred.Promise();
+}
+
+Napi::Value BotlinkApi::updateXrdName(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    constexpr size_t maxArgs = 3;
+    if (info.Length() > maxArgs) {
+        Napi::TypeError::New(env, "Too many arguments")
+            .ThrowAsJavaScriptException();
+    }
+
+    const auto& xrdJs = info[0];
+    Public::Xrd xrd = xrdJsToCxx(env, xrdJs);
+
+    const auto& arg1 = info[1];
+    if (!arg1.IsString()) {
+            Napi::TypeError::New(env, "Wrong argument for second argument. "
+                                 "Expected new name for XRD as string.")
+                .ThrowAsJavaScriptException();
+
+    }
+
+    std::string newName = arg1.As<Napi::String>();
+
+    std::optional<std::chrono::seconds> timeout;
+    if (info.Length() == maxArgs) {
+        const auto& arg2 = info[2];
+        if (arg2.IsNumber()) {
+            timeout = std::chrono::seconds(arg2.As<Napi::Number>());
+        } else {
+            Napi::TypeError::New(env, "Wrong argument for third argument. "
+                                 "Expected number for timeout in seconds.")
+                .ThrowAsJavaScriptException();
+        }
+    }
+
+    // create function here and perform name update on worker thread
+    // so that any HTTP requests won't block node.js's main thread.
+    auto updateNameFn = [&api = _api, xrd, newName, timeout] () -> bool {
+        if (timeout) {
+            return api.updateXrdName(xrd, newName, *timeout);
+        } else {
+            return api.updateXrdName(xrd, newName);
+        }};
+
+    auto deferred = Napi::Promise::Deferred::New(env);
+
+    // node.js garbage collects this
+    auto* worker = new RequestWorker<bool>(env, std::move(deferred), updateNameFn);
     worker->Queue();
 
     return deferred.Promise();
