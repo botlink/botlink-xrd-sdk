@@ -13,6 +13,9 @@ namespace {
 std::pair<int, int> resolutionStringToInt(const std::string& resolution);
 std::string resolutionIntToString(const int width, const int height);
 
+void setPingResponseCallback(botlink::Public::XrdConnection& conn,
+                             const Napi::CallbackInfo& info);
+
 namespace connectionStatus {
 const char connected[] = "Connected";
 const char disconnected[] = "Disconnected";
@@ -131,7 +134,8 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoForwardPort", &XrdConnection::setVideoForwardPort),
-                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig)});
+                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
+                     InstanceMethod("pingXrd", &XrdConnection::pingXrd)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -187,6 +191,8 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
         _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
                                                                  xrd);
     }
+
+    setPingResponseCallback(*_conn, info);
 }
 
 
@@ -599,6 +605,16 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, result);
 }
 
+Napi::Value XrdConnection::pingXrd(const Napi::CallbackInfo& info)
+{
+    std::optional<uint32_t> sequence = _conn->pingXrd();
+    if (sequence) {
+        return Napi::Number::New(info.Env(), sequence.value());
+    }
+
+    return info.Env().Null();
+}
+
 }
 }
 
@@ -658,6 +674,56 @@ std::string resolutionIntToString(const int width, const int height)
         resolution = "4k";
     }
     return resolution;
+}
+
+void setPingResponseCallback(botlink::Public::XrdConnection& conn,
+                             const Napi::CallbackInfo& info)
+{
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "Ping Response Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread will use this initially
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (const botlink::Public::PingResponse& response) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               botlink::Public::PingResponse* response) {
+            auto jsResponse = Napi::Object::New(env);
+            jsResponse.Set("sequence", Napi::Number::From(env, response->sequence));
+            jsResponse.Set("senderTimestampUs", Napi::Number::From(env, response->senderTimestamp.count()));
+            jsResponse.Set("receiverTimestampUs", Napi::Number::From(env, response->receiverTimestamp.count()));
+            jsResponse.Set("senderReceivedTimestampUs", Napi::Number::From(env, response->senderReceivedTimestamp.count()));
+            jsResponse.Set("latencyUs", Napi::Number::From(env, response->latency.count()));
+            jsResponse.Set("jitterUs", Napi::Number::From(env, response->jitter.count()));
+            delete response;
+            // The event name here needs to match the BotlinkApiEvents.NewTokens
+            // name in binding.ts.
+            jsCallback.Call({Napi::String::New(env, "pingResponse"), jsResponse});
+        };
+        // Need to make a copy since it's gonna be used on another thread and
+        // we can't guarantee the lifetime of the response argument here.
+        auto responseCopy = std::make_unique<botlink::Public::PingResponse>(response);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(responseCopy.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    conn.onPingMessageResponse(callbackSdk);
 }
 
 }

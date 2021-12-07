@@ -11,14 +11,23 @@ let sendPeriodic = (conn: XrdConnectionBindings) => {
   conn.sendAutopilotMessage(msg)
 }
 
+let pingPeriodic = (conn: XrdConnectionBindings) => {
+  console.log('pinging xrd')
+  conn.pingXrd()
+}
+
 let closeConnection = (conn: XrdConnectionBindings,
-  sendInterval: ReturnType<typeof setInterval>) => {
+  sendInterval: ReturnType<typeof setInterval>,
+  pingInterval: ReturnType<typeof setInterval>) => {
   // Stop sending
   clearInterval(sendInterval)
+  clearInterval(pingInterval)
 
   console.log('closing connection')
   conn.closeConnection()
   console.log('closed connection')
+
+  process.exit(0)
 }
 
 async function login(api: ApiBindings, username: string, password: string) {
@@ -62,6 +71,9 @@ async function connect(api: ApiBindings) {
       conn.on(XrdConnectionEvents.ConnectionStatus, (status) => {
         console.log(`Got connectionStatus: ${status}`)
       })
+      conn.on(XrdConnectionEvents.PingResponse, (response) => {
+        console.log(`Got ping reply ${JSON.stringify(response)}`)
+      })
 
       const videoConfig: XrdVideoConfig = {
         resolution: XrdVideoResolution.Resolution_480,
@@ -70,11 +82,13 @@ async function connect(api: ApiBindings) {
       conn.setVideoConfig(videoConfig)
 
       let sendInterval = setInterval(sendPeriodic, 5000, conn)
+      let pingInterval = setInterval(pingPeriodic, 1000, conn)
       // Close the conection after 20 seconds
-      setTimeout(closeConnection, 20000, conn, sendInterval)
+      setTimeout(closeConnection, 20000, conn, sendInterval, pingInterval)
     }
   } catch (err) {
     console.log(`failed to connect to xrd due to ${err}`)
+    process.exit(1)
   }
 }
 
@@ -95,6 +109,7 @@ async function main() {
     connect(api)
   } else {
     console.log('Need to be called with username and password')
+    process.exit(1)
   }
 }
 

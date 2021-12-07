@@ -40,6 +40,8 @@ public:
     Napi::Value setVideoForwardPort(const Napi::CallbackInfo& info);
     Napi::Value setVideoConfig(const Napi::CallbackInfo& info);
 
+    Napi::Value pingXrd(const Napi::CallbackInfo& info);
+
 private:
     Napi::ObjectReference _api;
     Napi::ObjectReference _logger;
