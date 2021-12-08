@@ -7,6 +7,7 @@
   "author": "Alex Kube <alexander.j.kube@gmail.com>",
   "license": "MIT",
   "private": false,
+  "main": "dist/index.js",
   "dependencies": {
     "@mapbox/node-pre-gyp": "^1.0.5",
     "@types/jsonwebtoken": "^8.3.8",
