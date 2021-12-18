@@ -7,7 +7,6 @@
   "author": "Alex Kube <alexander.j.kube@gmail.com>",
   "license": "MIT",
   "private": false,
-  "main": "dist/index.js",
   "dependencies": {
     "@mapbox/node-pre-gyp": "^1.0.5",
     "@types/jsonwebtoken": "^8.3.8",
@@ -34,7 +33,7 @@
   "scripts": {
     "setup-cxx-sdk": "env-cmd -f .sdkversion node scripts/setup-cxx-sdk.js",
     "install-bindings": "env-cmd -f .sdkpath node-pre-gyp install --fallback-to-build",
-    "install": "run-s setup-cxx-sdk install-bindings build",
+    "install": "run-s setup-cxx-sdk install-bindings",
     "build": "rimraf dist/ && tsc",
     "rebuild-bindings": "env-cmd -f .sdkpath node-pre-gyp install --build-from-source",
     "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none"
