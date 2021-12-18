@@ -1,23 +1,3 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -27,24 +7,19 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.XRDApi = exports.Api = void 0;
-const url_template_1 = __importDefault(require("url-template"));
-require("isomorphic-fetch");
-const urls = __importStar(require("./urls"));
-const auth_1 = require("./auth");
-let xrdsPathTemplate = url_template_1.default.parse('/users/{id}/botboxes');
-let xrdPathTemplate = url_template_1.default.parse('/botboxes/{id}');
-let xrdRegisterPathTemplate = url_template_1.default.parse(`/registerbotbox/{userId}`);
-let xrdConfigPathTemplate = url_template_1.default.parse(`/xrd/{xrdId}/config`);
-let xrdsPresenceTemplate = url_template_1.default.parse("/xrds/{id}/presence");
-class Api {
+import template from "url-template";
+import "isomorphic-fetch";
+import * as urls from "./urls";
+import { AuthManager } from './auth';
+let xrdsPathTemplate = template.parse('/users/{id}/botboxes');
+let xrdPathTemplate = template.parse('/botboxes/{id}');
+let xrdRegisterPathTemplate = template.parse(`/registerbotbox/{userId}`);
+let xrdConfigPathTemplate = template.parse(`/xrd/{xrdId}/config`);
+let xrdsPresenceTemplate = template.parse("/xrds/{id}/presence");
+export class Api {
     constructor(credentials, skipRefresh) {
         this.credentials = credentials;
-        this.authManager = new auth_1.AuthManager();
+        this.authManager = new AuthManager();
         if (!skipRefresh) {
             this.authManager.scheduleRefresh(this.credentials.token, this.credentials.refresh, (newCredentials) => {
                 this.credentials = newCredentials;
@@ -52,8 +27,7 @@ class Api {
         }
     }
 }
-exports.Api = Api;
-class XRDApi extends Api {
+export class XRDApi extends Api {
     list() {
         return __awaiter(this, void 0, void 0, function* () {
             const requestUrl = urls.API + xrdsPathTemplate.expand({ id: this.credentials.user.id });
@@ -153,4 +127,3 @@ class XRDApi extends Api {
         });
     }
 }
-exports.XRDApi = XRDApi;
