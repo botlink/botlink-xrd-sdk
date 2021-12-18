@@ -1,36 +1,39 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.XrdLogger = exports.XrdConnection = exports.BotlinkApi = exports.XrdLoggerSource = exports.XrdConnectionEvents = exports.XrdVideoCodec = exports.XrdVideoResolution = exports.XrdConnectionStatus = exports.BotlinkApiEvents = void 0;
 //const CxxClient = require('bindings')('botlink_xrd_sdk_bindings')
 var binary = require('@mapbox/node-pre-gyp');
 var path = require('path');
 // top-level directory starting from dist/src/napi/lib
 var binding_path = binary.find(path.resolve(path.join(__dirname, '../../../.././package.json')));
 const CxxClient = require(binding_path);
-import { EventEmitter } from 'events';
-import { inherits } from 'util';
+const events_1 = require("events");
+const util_1 = require("util");
 /**
  * Events emitted by BotlinkApi
  *
  * [[`BotlinkApi`]] emits these
  */
-export var BotlinkApiEvents;
+var BotlinkApiEvents;
 (function (BotlinkApiEvents) {
     BotlinkApiEvents["NewTokens"] = "NewTokens";
-})(BotlinkApiEvents || (BotlinkApiEvents = {}));
+})(BotlinkApiEvents = exports.BotlinkApiEvents || (exports.BotlinkApiEvents = {}));
 /**
  * The status of a connection to an XRD.
  *
  * [[`XrdConnection`]] emits this as part of an
  * [[`XrdConnectionEvents.ConnectionStatus`]] event.
  */
-export var XrdConnectionStatus;
+var XrdConnectionStatus;
 (function (XrdConnectionStatus) {
     XrdConnectionStatus["Connected"] = "Connected";
     XrdConnectionStatus["Connecting"] = "Connecting";
     XrdConnectionStatus["Disconnected"] = "Disconnected";
-})(XrdConnectionStatus || (XrdConnectionStatus = {}));
+})(XrdConnectionStatus = exports.XrdConnectionStatus || (exports.XrdConnectionStatus = {}));
 /**
  * Video resolutions that can be selected for RTP stream
  */
-export var XrdVideoResolution;
+var XrdVideoResolution;
 (function (XrdVideoResolution) {
     XrdVideoResolution["Unsupported"] = "Unsupported";
     /** 256x144 */
@@ -47,22 +50,22 @@ export var XrdVideoResolution;
     XrdVideoResolution["Resolution_1080"] = "1080";
     /** 3840x2160 */
     XrdVideoResolution["Resolution_4k"] = "4k";
-})(XrdVideoResolution || (XrdVideoResolution = {}));
+})(XrdVideoResolution = exports.XrdVideoResolution || (exports.XrdVideoResolution = {}));
 /**
  * Codecs used by the XRD to encode video.
  */
-export var XrdVideoCodec;
+var XrdVideoCodec;
 (function (XrdVideoCodec) {
     XrdVideoCodec["Unknown"] = "Unknown";
     XrdVideoCodec["H264"] = "H264";
     XrdVideoCodec["H265"] = "H265";
-})(XrdVideoCodec || (XrdVideoCodec = {}));
+})(XrdVideoCodec = exports.XrdVideoCodec || (exports.XrdVideoCodec = {}));
 /**
  * Events that [[`XrdConnection`]] emits.
  *
  * See [[`XrdConnectionBindings.on`]] for registering callbacks.
  */
-export var XrdConnectionEvents;
+var XrdConnectionEvents;
 (function (XrdConnectionEvents) {
     /** Event when the connection received an autopilot message from the XRD. */
     XrdConnectionEvents["AutopilotMessage"] = "autopilotMessage";
@@ -70,7 +73,7 @@ export var XrdConnectionEvents;
     XrdConnectionEvents["ConnectionStatus"] = "connectionStatus";
     /** Event when the connection received a video configuration message from the XRD. */
     XrdConnectionEvents["VideoConfig"] = "videoConfig";
-})(XrdConnectionEvents || (XrdConnectionEvents = {}));
+})(XrdConnectionEvents = exports.XrdConnectionEvents || (exports.XrdConnectionEvents = {}));
 /**
  * Enum used to tag the source of an autopilot message when logging an autopilot
  * message.
@@ -79,7 +82,7 @@ export var XrdConnectionEvents;
  * autopilot message sent to or received from an XRD are not listed here as that
  * is handled internally by [[`XrdConnection`]].
  */
-export var XrdLoggerSource;
+var XrdLoggerSource;
 (function (XrdLoggerSource) {
     /** Autopilot message is from an unknown source. */
     XrdLoggerSource[XrdLoggerSource["Unknown"] = 0] = "Unknown";
@@ -87,13 +90,15 @@ export var XrdLoggerSource;
     XrdLoggerSource[XrdLoggerSource["FromGcs"] = 7] = "FromGcs";
     /** Autopilot message sent to the Ground Control Software */
     XrdLoggerSource[XrdLoggerSource["ToGcs"] = 8] = "ToGcs";
-})(XrdLoggerSource || (XrdLoggerSource = {}));
-inherits(CxxClient.BotlinkApi, EventEmitter);
-inherits(CxxClient.XrdConnection, EventEmitter);
+})(XrdLoggerSource = exports.XrdLoggerSource || (exports.XrdLoggerSource = {}));
+(0, util_1.inherits)(CxxClient.BotlinkApi, events_1.EventEmitter);
+(0, util_1.inherits)(CxxClient.XrdConnection, events_1.EventEmitter);
 /** C++ implementation of [[`ApiBindings`]] */
 let BotlinkApi = CxxClient.BotlinkApi;
+exports.BotlinkApi = BotlinkApi;
 /** C++ implementation of [[`XrdConnectionBindings`]] */
 let XrdConnection = CxxClient.XrdConnection;
+exports.XrdConnection = XrdConnection;
 /** C++ implementation of [[`XrdLoggerBindings`]] */
 let XrdLogger = CxxClient.XrdLogger;
-export { BotlinkApi, XrdConnection, XrdLogger };
+exports.XrdLogger = XrdLogger;

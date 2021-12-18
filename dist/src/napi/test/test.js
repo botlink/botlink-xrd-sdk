@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -7,10 +8,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { BotlinkApi, XrdConnection } from '../lib/binding';
-import { XrdConnectionEvents, XrdVideoCodec } from '../lib/binding';
-import { XrdVideoResolution } from '../lib/binding';
-import { BotlinkApiEvents } from '../lib/binding';
+Object.defineProperty(exports, "__esModule", { value: true });
+const binding_1 = require("../lib/binding");
+const binding_2 = require("../lib/binding");
+const binding_3 = require("../lib/binding");
+const binding_4 = require("../lib/binding");
 let sendPeriodic = (conn) => {
     console.log('sending autopilot message');
     let msg = new Buffer([0, 1, 2, 3, 4]);
@@ -47,25 +49,25 @@ function connect(api) {
         try {
             let xrds = yield api.listXrds();
             console.log(`connecting to XRD ${JSON.stringify(xrds[0])}`);
-            let conn = new XrdConnection(api, xrds[0]);
+            let conn = new binding_1.XrdConnection(api, xrds[0]);
             conn.addVideoTrack();
             conn.setVideoForwardPort(61003);
             let connected = yield conn.openConnection(30);
             if (connected) {
                 //conn.startEmitter()
                 console.log(`connected to XRD ${JSON.stringify(xrds[0])}`);
-                conn.on(XrdConnectionEvents.AutopilotMessage, (msg) => {
+                conn.on(binding_2.XrdConnectionEvents.AutopilotMessage, (msg) => {
                     console.log(`Callback got msg, length ${msg.length}`);
                 });
-                conn.on(XrdConnectionEvents.VideoConfig, (config) => {
+                conn.on(binding_2.XrdConnectionEvents.VideoConfig, (config) => {
                     console.log(`Got video config reply ${JSON.stringify(config)}`);
                 });
-                conn.on(XrdConnectionEvents.ConnectionStatus, (status) => {
+                conn.on(binding_2.XrdConnectionEvents.ConnectionStatus, (status) => {
                     console.log(`Got connectionStatus: ${status}`);
                 });
                 const videoConfig = {
-                    resolution: XrdVideoResolution.Resolution_480,
-                    framerate: 30, codec: XrdVideoCodec.H265
+                    resolution: binding_3.XrdVideoResolution.Resolution_480,
+                    framerate: 30, codec: binding_2.XrdVideoCodec.H265
                 };
                 conn.setVideoConfig(videoConfig);
                 let sendInterval = setInterval(sendPeriodic, 5000, conn);
@@ -80,8 +82,8 @@ function connect(api) {
 }
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
-        let api = new BotlinkApi();
-        api.on(BotlinkApiEvents.NewTokens, ({ auth, refresh }) => {
+        let api = new binding_1.BotlinkApi();
+        api.on(binding_4.BotlinkApiEvents.NewTokens, ({ auth, refresh }) => {
             console.log(`Got auth token: ${auth}`);
             console.log(`Got refresh token: ${refresh}`);
         });
