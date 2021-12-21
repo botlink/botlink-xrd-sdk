@@ -344,6 +344,15 @@ export interface XrdConnectionBindings {
    * Resume the video stream from the XRD connection.
    */
   resumeVideo(): boolean
+  /**
+   * Send a request to the XRD to save its logs
+   *
+   * @param callback The function to call when a response to the request is
+   *                 received from the XRD
+   *
+   * @returns `true` if the request successfully sent, `false`  otherwise
+   */
+  saveLogs(callback: (success: boolean) => void): boolean
 }
 
 /**

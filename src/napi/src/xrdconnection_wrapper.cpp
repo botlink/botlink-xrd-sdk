@@ -137,6 +137,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
                      InstanceMethod("pauseVideo", &XrdConnection::pauseVideo),
                      InstanceMethod("resumeVideo", &XrdConnection::resumeVideo),
+                     InstanceMethod("saveLogs", &XrdConnection::saveLogs),
                      InstanceMethod("pingXrd", &XrdConnection::pingXrd)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
@@ -620,6 +621,50 @@ Napi::Value XrdConnection::resumeVideo(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
 
     bool result = _conn->resumeVideo();
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::saveLogs(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    if (!(info.Length() == 1 && info[0].IsFunction())) {
+        Napi::TypeError::New(env, "Wrong number of arguments. "
+                             "Expected callback function.")
+            .ThrowAsJavaScriptException();
+    }
+
+    Napi::Function jsCallback = info[0].As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we can call the javascript function from
+    // the C++ callback thread.
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        jsCallback,          // JavaScript function called asynchronously
+        "Save Logs Response Callback", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread should ever use this
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [safeCallback = std::move(workerFn)] (bool result) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               bool* result) {
+            auto jsResult = Napi::Boolean::New(env, *result);
+            delete result;
+            jsCallback.Call({jsResult});
+        };
+        auto resultPointer = std::make_unique<bool>(result);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = safeCallback.BlockingCall(resultPointer.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    bool result = _conn->saveLogs(callbackSdk);
     return Napi::Boolean::New(env, result);
 }
 

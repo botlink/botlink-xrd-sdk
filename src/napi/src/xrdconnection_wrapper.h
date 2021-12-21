@@ -41,6 +41,7 @@ public:
     Napi::Value setVideoConfig(const Napi::CallbackInfo& info);
     Napi::Value pauseVideo(const Napi::CallbackInfo& info);
     Napi::Value resumeVideo(const Napi::CallbackInfo& info);
+    Napi::Value saveLogs(const Napi::CallbackInfo& info);
 
     Napi::Value pingXrd(const Napi::CallbackInfo& info);
 
