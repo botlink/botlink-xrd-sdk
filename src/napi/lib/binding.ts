@@ -336,6 +336,14 @@ export interface XrdConnectionBindings {
    * @returns `number` the sequence number of the ping message if sent successfully, `null` otherwise
    */
   pingXrd(): number | null
+  /**
+   * Pause the video stream from the XRD connection.
+   */
+  pauseVideo(): boolean
+  /**
+   * Resume the video stream from the XRD connection.
+   */
+  resumeVideo(): boolean
 }
 
 /**

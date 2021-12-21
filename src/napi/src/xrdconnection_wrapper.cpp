@@ -135,6 +135,8 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoForwardPort", &XrdConnection::setVideoForwardPort),
                      InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
+                     InstanceMethod("pauseVideo", &XrdConnection::pauseVideo),
+                     InstanceMethod("resumeVideo", &XrdConnection::resumeVideo),
                      InstanceMethod("pingXrd", &XrdConnection::pingXrd)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
@@ -602,6 +604,22 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
     bool result = _conn->setVideoConfig(config);
     // TODO(cgrahn): Need an event that indicates XRD changed video settings
 
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::pauseVideo(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    bool result = _conn->pauseVideo();
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::resumeVideo(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    bool result = _conn->resumeVideo();
     return Napi::Boolean::New(env, result);
 }
 
