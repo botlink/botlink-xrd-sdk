@@ -415,6 +415,21 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                     break;
             }
 
+            switch (config->state) {
+                // Note that the strings we use for the value in the call to
+                // Set() must match the values in the XrdVideoState enum in
+                // binding.ts
+                case botlink::Public::VideoState::Paused:
+                    videoConfig.Set("state", Napi::Value::From(env, "Paused"));
+                    break;
+                case botlink::Public::VideoState::Playing:
+                    videoConfig.Set("state", Napi::Value::From(env, "Playing"));
+                    break;
+                default:
+                    videoConfig.Set("state", Napi::Value::From(env, "Unknown"));
+                    break;
+            }
+
             jsCallback.Call( {Napi::String::New( env, "videoConfig" ), videoConfig} );
 
             delete config;
@@ -595,6 +610,16 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
             config.codec = Public::VideoCodec::H265;
         } else {
             config.codec = Public::VideoCodec::Unknown;
+        }
+
+        // The strings we check here must match XrdVideoState in binding.ts
+        const std::string state = videoConfig.Get("state").As<Napi::String>();
+        if (state == "Paused") {
+            config.state = Public::VideoState::Paused;
+        } else if (state == "Playing") {
+            config.state = Public::VideoState::Playing;
+        } else {
+            config.state = Public::VideoState::Unknown;
         }
     } catch (const Napi::Error& error) {
         Napi::Error::New(env, "Got exception parsing XrdVideoConfig object: " +

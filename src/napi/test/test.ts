@@ -77,7 +77,8 @@ async function connect(api: ApiBindings) {
 
       const videoConfig: XrdVideoConfig = {
         resolution: XrdVideoResolution.Resolution_480,
-        framerate: 30, codec: XrdVideoCodec.H265
+        framerate: 30, codec: XrdVideoCodec.H265,
+        state: XrdVideoState.Playing
       }
       conn.setVideoConfig(videoConfig)
 

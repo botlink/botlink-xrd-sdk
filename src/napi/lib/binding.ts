@@ -68,14 +68,22 @@ export enum XrdVideoCodec {
   H264 = 'H264',
   H265 = 'H265'
 }
-
+/**
+ * State of the video stream from the XRD
+ */
+export enum XrdVideoState {
+  Unknown = 'Unknown',
+  Paused = 'Paused',
+  Playing = 'Playing'
+}
 /**
  * Interface for an object used to configure the RTP stream sent from an XRD.
  */
 export interface XrdVideoConfig {
   resolution: XrdVideoResolution
   framerate: number,
-  codec: XrdVideoCodec
+  codec: XrdVideoCodec,
+  state: XrdVideoState
 }
 
 /**
