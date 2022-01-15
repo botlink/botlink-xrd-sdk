@@ -18,12 +18,18 @@ let sendPeriodic = (conn) => {
     let msg = new Buffer([0, 1, 2, 3, 4]);
     conn.sendAutopilotMessage(msg);
 };
-let closeConnection = (conn, sendInterval) => {
+let pingPeriodic = (conn) => {
+    console.log('pinging xrd');
+    conn.pingXrd();
+};
+let closeConnection = (conn, sendInterval, pingInterval) => {
     // Stop sending
     clearInterval(sendInterval);
+    clearInterval(pingInterval);
     console.log('closing connection');
     conn.closeConnection();
     console.log('closed connection');
+    process.exit(0);
 };
 function login(api, username, password) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -65,18 +71,24 @@ function connect(api) {
                 conn.on(binding_2.XrdConnectionEvents.ConnectionStatus, (status) => {
                     console.log(`Got connectionStatus: ${status}`);
                 });
+                conn.on(binding_2.XrdConnectionEvents.PingResponse, (response) => {
+                    console.log(`Got ping reply ${JSON.stringify(response)}`);
+                });
                 const videoConfig = {
                     resolution: binding_3.XrdVideoResolution.Resolution_480,
-                    framerate: 30, codec: binding_2.XrdVideoCodec.H265
+                    framerate: 30, codec: binding_2.XrdVideoCodec.H265,
+                    state: binding_2.XrdVideoState.Playing
                 };
                 conn.setVideoConfig(videoConfig);
                 let sendInterval = setInterval(sendPeriodic, 5000, conn);
+                let pingInterval = setInterval(pingPeriodic, 1000, conn);
                 // Close the conection after 20 seconds
-                setTimeout(closeConnection, 20000, conn, sendInterval);
+                setTimeout(closeConnection, 20000, conn, sendInterval, pingInterval);
             }
         }
         catch (err) {
             console.log(`failed to connect to xrd due to ${err}`);
+            process.exit(1);
         }
     });
 }
@@ -99,6 +111,7 @@ function main() {
         }
         else {
             console.log('Need to be called with username and password');
+            process.exit(1);
         }
     });
 }

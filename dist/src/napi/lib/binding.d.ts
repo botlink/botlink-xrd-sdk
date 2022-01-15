@@ -58,12 +58,41 @@ export declare enum XrdVideoCodec {
     H265 = "H265"
 }
 /**
+ * State of the video stream from the XRD
+ */
+export declare enum XrdVideoState {
+    Unknown = "Unknown",
+    Paused = "Paused",
+    Playing = "Playing"
+}
+/**
  * Interface for an object used to configure the RTP stream sent from an XRD.
  */
 export interface XrdVideoConfig {
     resolution: XrdVideoResolution;
     framerate: number;
     codec: XrdVideoCodec;
+    state: XrdVideoState;
+}
+/**
+ * Interface for an object used to hold the ping response from an XRD.
+ *
+ * Note that the timestamps are based off of independent monotonic clocks (one
+ * clock on this machine, one on the XRD).
+ */
+export interface XrdPingResponse {
+    /** the sequence number of the ping message and response */
+    sequence: number;
+    /** time in microseconds when we sent the ping message */
+    senderTimestampUs: number;
+    /** time in microseconds when the XRD received the ping message */
+    receiverTimestampUs: number;
+    /** time in microseconds when we sent received the response from the XRD */
+    senderReceivedTimestampUs: number;
+    /** calculated latency in microseconds */
+    latencyUs: number;
+    /** calculated jitter of the latency in microseconds */
+    jitterUs: number;
 }
 /**
  * Interface for an object used to log in to the Botlink Cloud with a
@@ -204,7 +233,9 @@ export declare enum XrdConnectionEvents {
     /** Event when the status of the connection to the XRD changes. */
     ConnectionStatus = "connectionStatus",
     /** Event when the connection received a video configuration message from the XRD. */
-    VideoConfig = "videoConfig"
+    VideoConfig = "videoConfig",
+    /** Event when the connection received a ping response message from the XRD. */
+    PingResponse = "pingResponse"
 }
 /**
  * This is the TypeScript interface for the C++ [[`XrdConnection`]] bindings.
@@ -254,6 +285,7 @@ export interface XrdConnectionBindings {
     on(event: XrdConnectionEvents.AutopilotMessage, callback: (message: Buffer) => void): void;
     on(event: XrdConnectionEvents.ConnectionStatus, callback: (status: XrdConnectionStatus) => void): void;
     on(event: XrdConnectionEvents.VideoConfig, callback: (config: XrdVideoConfig) => void): void;
+    on(event: XrdConnectionEvents.PingResponse, callback: (response: XrdPingResponse) => void): void;
     /**
      * Send an autopilot message to the XRD.
      *
@@ -288,6 +320,33 @@ export interface XrdConnectionBindings {
      * @returns `true` if video config successfully sent, `false` otherwise
      */
     setVideoConfig(config: XrdVideoConfig): boolean;
+    /**
+     * Send a ping message to the currently connected XRD.
+     *
+     * After calling this method sucessfully, the caller gets an
+     * [[`XrdConnectionEvents.PingResponse`]] event when the response from the
+     * XRD is received.
+     *
+     * @returns `number` the sequence number of the ping message if sent successfully, `null` otherwise
+     */
+    pingXrd(): number | null;
+    /**
+     * Pause the video stream from the XRD connection.
+     */
+    pauseVideo(): boolean;
+    /**
+     * Resume the video stream from the XRD connection.
+     */
+    resumeVideo(): boolean;
+    /**
+     * Send a request to the XRD to save its logs
+     *
+     * @param callback The function to call when a response to the request is
+     *                 received from the XRD
+     *
+     * @returns `true` if the request successfully sent, `false`  otherwise
+     */
+    saveLogs(callback: (success: boolean) => void): boolean;
 }
 /**
  * Enum used to tag the source of an autopilot message when logging an autopilot

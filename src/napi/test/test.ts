@@ -1,7 +1,7 @@
 import { BotlinkApi, XrdConnection } from '../lib/binding'
 import { ApiBindings, XrdConnectionBindings } from '../lib/binding'
 import { ApiLoginUsername, ApiLoginToken } from '../lib/binding'
-import { XrdConnectionEvents, XrdVideoCodec, XrdVideoConfig } from '../lib/binding'
+import { XrdConnectionEvents, XrdVideoCodec, XrdVideoConfig, XrdVideoState } from '../lib/binding'
 import { XrdVideoResolution } from '../lib/binding'
 import { BotlinkApiEvents } from '../lib/binding'
 

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.XrdLogger = exports.XrdConnection = exports.BotlinkApi = exports.XrdLoggerSource = exports.XrdConnectionEvents = exports.XrdVideoCodec = exports.XrdVideoResolution = exports.XrdConnectionStatus = exports.BotlinkApiEvents = void 0;
+exports.XrdLogger = exports.XrdConnection = exports.BotlinkApi = exports.XrdLoggerSource = exports.XrdConnectionEvents = exports.XrdVideoState = exports.XrdVideoCodec = exports.XrdVideoResolution = exports.XrdConnectionStatus = exports.BotlinkApiEvents = void 0;
 //const CxxClient = require('bindings')('botlink_xrd_sdk_bindings')
 var binary = require('@mapbox/node-pre-gyp');
 var path = require('path');
@@ -61,6 +61,15 @@ var XrdVideoCodec;
     XrdVideoCodec["H265"] = "H265";
 })(XrdVideoCodec = exports.XrdVideoCodec || (exports.XrdVideoCodec = {}));
 /**
+ * State of the video stream from the XRD
+ */
+var XrdVideoState;
+(function (XrdVideoState) {
+    XrdVideoState["Unknown"] = "Unknown";
+    XrdVideoState["Paused"] = "Paused";
+    XrdVideoState["Playing"] = "Playing";
+})(XrdVideoState = exports.XrdVideoState || (exports.XrdVideoState = {}));
+/**
  * Events that [[`XrdConnection`]] emits.
  *
  * See [[`XrdConnectionBindings.on`]] for registering callbacks.
@@ -73,6 +82,8 @@ var XrdConnectionEvents;
     XrdConnectionEvents["ConnectionStatus"] = "connectionStatus";
     /** Event when the connection received a video configuration message from the XRD. */
     XrdConnectionEvents["VideoConfig"] = "videoConfig";
+    /** Event when the connection received a ping response message from the XRD. */
+    XrdConnectionEvents["PingResponse"] = "pingResponse";
 })(XrdConnectionEvents = exports.XrdConnectionEvents || (exports.XrdConnectionEvents = {}));
 /**
  * Enum used to tag the source of an autopilot message when logging an autopilot
