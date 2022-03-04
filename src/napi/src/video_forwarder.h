@@ -23,7 +23,7 @@ public:
     void setPort(int port);
     int getPort() const;
 
-    bool forward(uint8_t* data, int length);
+    bool forward(const uint8_t* data, int length);
 
 private:
 #ifdef _WIN32

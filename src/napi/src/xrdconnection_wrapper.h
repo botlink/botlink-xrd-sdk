@@ -31,7 +31,7 @@ public:
 
     Napi::Value openConnection(const Napi::CallbackInfo& info);
     Napi::Value closeConnection(const Napi::CallbackInfo& info);
-    Napi::Value isConnected(const Napi::CallbackInfo& info);
+    Napi::Value getConnectionStatus(const Napi::CallbackInfo& info);
 
     Napi::Value getAutopilotMessage(const Napi::CallbackInfo& info);
     Napi::Value sendAutopilotMessage(const Napi::CallbackInfo& info);

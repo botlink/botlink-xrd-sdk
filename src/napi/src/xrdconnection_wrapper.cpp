@@ -18,6 +18,7 @@ void setPingResponseCallback(botlink::Public::XrdConnection& conn,
 
 namespace connectionStatus {
 const char connected[] = "Connected";
+const char connecting[] = "Connecting";
 const char disconnected[] = "Disconnected";
 const char event[] = "connectionStatus";
 }
@@ -42,19 +43,21 @@ public:
     void Execute()
     {
         try {
+            // TODO(cgrahn): Still want to call _action() in a worker thread
+            // this as connecting can block during the initial http requests to
+            // get a token and ice server config.
             auto future = _action();
 
+            // TODO(cgrahn): Do not need this while loop anymore though as we
+            // can register a callback to get connection status. So open
+            // connection, query connection status, then wait for any
+            // connection status updates from the callback.
             while (true) {
                 const std::future_status status = future.wait_for(std::chrono::milliseconds(100));
                 if (status == std::future_status::ready) {
                     break;
                 } else if (status == std::future_status::timeout) {
                     if (_isCancelled->load()) {
-                        // Still need to call cancelOpen() in case an
-                        // async race in the relay app caused the call
-                        // to cancelOpen() in closeConnection() to
-                        // happen before the call to openConnection()
-                        _connection->cancelOpen();
                         SetError("Connection attempt cancelled");
                         break;
                     }
@@ -129,7 +132,7 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                     "XrdConnection",
                     {InstanceMethod("openConnection", &XrdConnection::openConnection),
                      InstanceMethod("closeConnection", &XrdConnection::closeConnection),
-                     InstanceMethod("isConnected", &XrdConnection::isConnected),
+                     InstanceMethod("getConnectionStatus", &XrdConnection::getConnectionStatus),
                      InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
@@ -243,7 +246,6 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
     Napi::Env env = info.Env();
 
     // clean up any connection that is in progress
-    _conn->cancelOpen();
     _cancelConnectionAttempt = true;
 
     bool success = _conn->close();
@@ -262,13 +264,25 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
     return Napi::Boolean::New(env, success);
 }
 
-Napi::Value XrdConnection::isConnected(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::getConnectionStatus(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
-    bool connected = _conn->isConnected();
-
-    return Napi::Boolean::New(env, connected);
+    botlink::Public::XrdConnectionState status  = _conn->getConnectionState();
+    switch (status) {
+        case botlink::Public::XrdConnectionState::NotConnected:
+            return Napi::String::New(env, connectionStatus::disconnected);
+            break;
+        case botlink::Public::XrdConnectionState::Connecting:
+            return Napi::String::New(env, connectionStatus::connecting);
+            break;
+        case botlink::Public::XrdConnectionState::Connected:
+            return Napi::String::New(env, connectionStatus::connected);
+            break;
+        default:
+            return Napi::String::New(env, connectionStatus::disconnected);
+            break;
+    }
 }
 
 Napi::Value XrdConnection::getAutopilotMessage(const Napi::CallbackInfo& info)
@@ -436,22 +450,32 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
         };
 
         auto callbackConnectionStatus = []( Napi::Env env, Napi::Function jsCallback,
-                                            bool* connected) {
+                                            botlink::Public::XrdConnectionState* connectionState) {
             // Transform native data into JS data, passing it to the provided
             // `jsCallback` -- the TSFN's JavaScript function.
-            // TODO(cgrahn): Use enum instead of bool?
-            if (*connected) {
-                jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                        Napi::String::New(env, connectionStatus::connected)});
-            } else {
-                jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                        Napi::String::New(env, connectionStatus::disconnected)});
+            switch (*connectionState) {
+                case botlink::Public::XrdConnectionState::NotConnected:
+                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                            Napi::String::New(env, connectionStatus::disconnected)});
+                    break;
+                case botlink::Public::XrdConnectionState::Connecting:
+                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                            Napi::String::New(env, connectionStatus::connecting)});
+                    break;
+                case botlink::Public::XrdConnectionState::Connected:
+                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                            Napi::String::New(env, connectionStatus::connected)});
+                    break;
+                default:
+                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                            Napi::String::New(env, connectionStatus::disconnected)});
+                    break;
             }
 
-            delete connected;
+            delete connectionState;
         };
 
-        bool connected = conn.isConnected();
+        auto connectionState = conn.getConnectionState();
 
         auto tasksLastRan = std::chrono::steady_clock::now();
         while (true)
@@ -496,17 +520,19 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                     }
                 }
 
-                bool connectedNow = conn.isConnected();
-                if (connectedNow != connected) {
+                // TODO(cgrahn): Update to use callback from C++ SDK instead of
+                // polling.
+                auto newConnectionState = conn.getConnectionState();
+                if (newConnectionState != connectionState) {
                     // emit "connectionStatus" event
-                    auto copy = std::make_unique<bool>(connectedNow);
+                    auto copy = std::make_unique<botlink::Public::XrdConnectionState>(newConnectionState);
                     napi_status status = fn.BlockingCall(copy.release(), callbackConnectionStatus);
                     if (status != napi_ok)
                     {
                         break;
                     }
                 }
-                connected = connectedNow;
+                connectionState = newConnectionState;
             }
         }
 
@@ -543,7 +569,7 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
     }
 
     auto callback = [&forwarder = _videoForwarder]
-        (uint8_t* packet, size_t length) {
+        (const uint8_t* packet, size_t length) {
         // Uncomment following for debugging.
         // TODO(cgrahn): Do not use std::cout. It causes a crash on
         // Windows with "yarn dev" and is frustrating to debug. Need
@@ -695,7 +721,20 @@ Napi::Value XrdConnection::saveLogs(const Napi::CallbackInfo& info)
 
 Napi::Value XrdConnection::pingXrd(const Napi::CallbackInfo& info)
 {
-    std::optional<uint32_t> sequence = _conn->pingXrd();
+    std::optional<uint32_t> sequence;
+    try {
+        sequence = _conn->pingXrd();
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
+
     if (sequence) {
         return Napi::Number::New(info.Env(), sequence.value());
     }
