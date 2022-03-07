@@ -63,6 +63,7 @@ def print_deps_to_copy():
     elif platform.system() == 'Windows':
         sdkbindir = get_sdkbindir()
         deps = [os.path.join(sdkbindir, 'botlink-cxx-client.dll'),
+                os.path.join(sdkbindir, 'pion_capi.dll'),
                 os.path.join(sdkbindir, 'libcrypto-1_1-x64.dll'),
                 os.path.join(sdkbindir, 'libssl-1_1-x64.dll')]
         deps = ' '.join([repr(x) for x in deps])
