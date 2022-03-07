@@ -16,6 +16,9 @@ std::string resolutionIntToString(const int width, const int height);
 void setPingResponseCallback(botlink::Public::XrdConnection& conn,
                              const Napi::CallbackInfo& info);
 
+void setConnectionStatusCallback(botlink::Public::XrdConnection& conn,
+                                 const Napi::CallbackInfo& info);
+
 namespace connectionStatus {
 const char connected[] = "Connected";
 const char connecting[] = "Connecting";
@@ -43,29 +46,10 @@ public:
     void Execute()
     {
         try {
-            // TODO(cgrahn): Still want to call _action() in a worker thread
-            // this as connecting can block during the initial http requests to
-            // get a token and ice server config.
+            // This blocks during the initial http requests that get a token
+            // and the ice server config. So that's why we open a connection
+            // from a worker thread.
             auto future = _action();
-
-            // TODO(cgrahn): Do not need this while loop anymore though as we
-            // can register a callback to get connection status. So open
-            // connection, query connection status, then wait for any
-            // connection status updates from the callback.
-            while (true) {
-                const std::future_status status = future.wait_for(std::chrono::milliseconds(100));
-                if (status == std::future_status::ready) {
-                    break;
-                } else if (status == std::future_status::timeout) {
-                    if (_isCancelled->load()) {
-                        SetError("Connection attempt cancelled");
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-
             _result = future.get();
             if (!_result) {
                 SetError("Failed to start connection");
@@ -199,6 +183,7 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     }
 
     setPingResponseCallback(*_conn, info);
+    setConnectionStatusCallback(*_conn, info);
 }
 
 
@@ -449,34 +434,6 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             delete config;
         };
 
-        auto callbackConnectionStatus = []( Napi::Env env, Napi::Function jsCallback,
-                                            botlink::Public::XrdConnectionState* connectionState) {
-            // Transform native data into JS data, passing it to the provided
-            // `jsCallback` -- the TSFN's JavaScript function.
-            switch (*connectionState) {
-                case botlink::Public::XrdConnectionState::NotConnected:
-                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                            Napi::String::New(env, connectionStatus::disconnected)});
-                    break;
-                case botlink::Public::XrdConnectionState::Connecting:
-                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                            Napi::String::New(env, connectionStatus::connecting)});
-                    break;
-                case botlink::Public::XrdConnectionState::Connected:
-                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                            Napi::String::New(env, connectionStatus::connected)});
-                    break;
-                default:
-                    jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                            Napi::String::New(env, connectionStatus::disconnected)});
-                    break;
-            }
-
-            delete connectionState;
-        };
-
-        auto connectionState = conn.getConnectionState();
-
         auto tasksLastRan = std::chrono::steady_clock::now();
         while (true)
         {
@@ -505,6 +462,8 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             if (timeDiff >= timeout) {
                 tasksLastRan = now;
 
+                // TODO(cgrahn): This should run off of a callback instead of
+                // being polled here.
                 // Check for new video config
                 auto config = videoConfig->getConfig();
                 if (config) {
@@ -519,20 +478,6 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                         break;
                     }
                 }
-
-                // TODO(cgrahn): Update to use callback from C++ SDK instead of
-                // polling.
-                auto newConnectionState = conn.getConnectionState();
-                if (newConnectionState != connectionState) {
-                    // emit "connectionStatus" event
-                    auto copy = std::make_unique<botlink::Public::XrdConnectionState>(newConnectionState);
-                    napi_status status = fn.BlockingCall(copy.release(), callbackConnectionStatus);
-                    if (status != napi_ok)
-                    {
-                        break;
-                    }
-                }
-                connectionState = newConnectionState;
             }
         }
 
@@ -851,6 +796,65 @@ void setPingResponseCallback(botlink::Public::XrdConnection& conn,
     };
 
     conn.onPingMessageResponse(callbackSdk);
+}
+
+void setConnectionStatusCallback(botlink::Public::XrdConnection& conn,
+                                 const Napi::CallbackInfo& info)
+{
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "Connection Status Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread uses this
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (botlink::Public::XrdConnectionState state) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               botlink::Public::XrdConnectionState* state) {
+            const char* status;
+            switch (*state) {
+                case botlink::Public::XrdConnectionState::NotConnected:
+                    status = connectionStatus::disconnected;
+                    break;
+                case botlink::Public::XrdConnectionState::Connecting:
+                    status = connectionStatus::connecting;
+                    break;
+                case botlink::Public::XrdConnectionState::Connected:
+                    status = connectionStatus::connected;
+                    break;
+                default:
+                    status = connectionStatus::disconnected;
+                    break;
+            }
+
+            delete state;
+            jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                    Napi::String::New(env, status)});
+        };
+        // Need to make a copy since it's gonna be used on another thread and
+        // we can't guarantee the lifetime of the response argument here.
+        auto statusCopy = std::make_unique<botlink::Public::XrdConnectionState>(state);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(statusCopy.release(), nodeCallback);
+        if (status != napi_ok) {
+            fprintf(stderr, "Failed to call emitter. Status %d\n", status);
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    conn.onConnectionStateChange(callbackSdk);
 }
 
 }
