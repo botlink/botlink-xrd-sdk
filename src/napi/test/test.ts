@@ -8,12 +8,20 @@ import { BotlinkApiEvents } from '../lib/binding'
 let sendPeriodic = (conn: XrdConnectionBindings) => {
   console.log('sending autopilot message')
   let msg = new Buffer([0, 1, 2, 3, 4])
-  conn.sendAutopilotMessage(msg)
+  try {
+    conn.sendAutopilotMessage(msg)
+  } catch (err) {
+    console.log(`Got error '${err}' sending autopilot message`)
+  }
 }
 
 let pingPeriodic = (conn: XrdConnectionBindings) => {
   console.log('pinging xrd')
-  conn.pingXrd()
+  try {
+    conn.pingXrd()
+  } catch (err) {
+    console.log(`Got error '${err}' pinging XRD`)
+  }
 }
 
 let closeConnection = (conn: XrdConnectionBindings,
@@ -51,12 +59,16 @@ async function login(api: ApiBindings, username: string, password: string) {
 }
 
 async function connect(api: ApiBindings) {
+  let conn = null
   try {
     let xrds = await api.listXrds()
     console.log(`connecting to XRD ${JSON.stringify(xrds[0])}`)
-    let conn = new XrdConnection(api, xrds[0])
+    conn = new XrdConnection(api, xrds[0])
     conn.addVideoTrack()
     conn.setVideoForwardPort(61003)
+    conn.on(XrdConnectionEvents.ConnectionStatus, (status) => {
+      console.log(`Got connectionStatus: ${status}`)
+    })
     let connected = await conn.openConnection(30)
     if (connected) {
       //conn.startEmitter()
@@ -67,9 +79,6 @@ async function connect(api: ApiBindings) {
       })
       conn.on(XrdConnectionEvents.VideoConfig, (config) => {
         console.log(`Got video config reply ${JSON.stringify(config)}`)
-      })
-      conn.on(XrdConnectionEvents.ConnectionStatus, (status) => {
-        console.log(`Got connectionStatus: ${status}`)
       })
       conn.on(XrdConnectionEvents.PingResponse, (response) => {
         console.log(`Got ping reply ${JSON.stringify(response)}`)
@@ -89,6 +98,9 @@ async function connect(api: ApiBindings) {
     }
   } catch (err) {
     console.log(`failed to connect to xrd due to ${err}`)
+    if (conn) {
+      conn.closeConnection()
+    }
     process.exit(1)
   }
 }
