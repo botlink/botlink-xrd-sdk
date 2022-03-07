@@ -598,8 +598,19 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    bool result = _conn->setVideoConfig(config);
-    // TODO(cgrahn): Need an event that indicates XRD changed video settings
+    bool result = false;
+    try {
+        result = _conn->setVideoConfig(config);
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
 
     return Napi::Boolean::New(env, result);
 }
@@ -608,7 +619,19 @@ Napi::Value XrdConnection::pauseVideo(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
-    bool result = _conn->pauseVideo();
+    bool result = false;
+    try {
+        result = _conn->pauseVideo();
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
     return Napi::Boolean::New(env, result);
 }
 
@@ -616,7 +639,19 @@ Napi::Value XrdConnection::resumeVideo(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
-    bool result = _conn->resumeVideo();
+    bool result = false;
+    try {
+        result = _conn->resumeVideo();
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
     return Napi::Boolean::New(env, result);
 }
 
@@ -660,7 +695,19 @@ Napi::Value XrdConnection::saveLogs(const Napi::CallbackInfo& info)
         }
     };
 
-    bool result = _conn->saveLogs(callbackSdk);
+    bool result = false;
+    try {
+        result = _conn->saveLogs(callbackSdk);
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
     return Napi::Boolean::New(env, result);
 }
 
