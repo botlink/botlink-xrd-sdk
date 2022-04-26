@@ -274,11 +274,11 @@ export interface XrdConnectionBindings {
      */
     closeConnection(): boolean;
     /**
-     * Query if the connection to an XRD is open.
+     * Query if state of the connection to an XRD
      *
-     * @returns `true` if connected to XRD, `false` otherwise
+     * @returns An [[`XrdConnectionStatus`]] value
      */
-    isConnected(): boolean;
+    getConnectionStatus(): XrdConnectionStatus;
     /**
      * Register callbacks for [[`XrdConnectionEvents`]].
      */

@@ -16,11 +16,21 @@ const binding_4 = require("../lib/binding");
 let sendPeriodic = (conn) => {
     console.log('sending autopilot message');
     let msg = new Buffer([0, 1, 2, 3, 4]);
-    conn.sendAutopilotMessage(msg);
+    try {
+        conn.sendAutopilotMessage(msg);
+    }
+    catch (err) {
+        console.log(`Got error '${err}' sending autopilot message`);
+    }
 };
 let pingPeriodic = (conn) => {
     console.log('pinging xrd');
-    conn.pingXrd();
+    try {
+        conn.pingXrd();
+    }
+    catch (err) {
+        console.log(`Got error '${err}' pinging XRD`);
+    }
 };
 let closeConnection = (conn, sendInterval, pingInterval) => {
     // Stop sending
@@ -52,12 +62,16 @@ function login(api, username, password) {
 }
 function connect(api) {
     return __awaiter(this, void 0, void 0, function* () {
+        let conn = null;
         try {
             let xrds = yield api.listXrds();
             console.log(`connecting to XRD ${JSON.stringify(xrds[0])}`);
-            let conn = new binding_1.XrdConnection(api, xrds[0]);
+            conn = new binding_1.XrdConnection(api, xrds[0]);
             conn.addVideoTrack();
             conn.setVideoForwardPort(61003);
+            conn.on(binding_2.XrdConnectionEvents.ConnectionStatus, (status) => {
+                console.log(`Got connectionStatus: ${status}`);
+            });
             let connected = yield conn.openConnection(30);
             if (connected) {
                 //conn.startEmitter()
@@ -67,9 +81,6 @@ function connect(api) {
                 });
                 conn.on(binding_2.XrdConnectionEvents.VideoConfig, (config) => {
                     console.log(`Got video config reply ${JSON.stringify(config)}`);
-                });
-                conn.on(binding_2.XrdConnectionEvents.ConnectionStatus, (status) => {
-                    console.log(`Got connectionStatus: ${status}`);
                 });
                 conn.on(binding_2.XrdConnectionEvents.PingResponse, (response) => {
                     console.log(`Got ping reply ${JSON.stringify(response)}`);
@@ -88,6 +99,9 @@ function connect(api) {
         }
         catch (err) {
             console.log(`failed to connect to xrd due to ${err}`);
+            if (conn) {
+                conn.closeConnection();
+            }
             process.exit(1);
         }
     });
