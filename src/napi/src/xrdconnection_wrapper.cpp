@@ -154,32 +154,16 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     // dangling pointers.
     Napi::Object obj = apiJs.As<Napi::Object>();
     _api =  Napi::ObjectReference::New(obj, 1);
-    BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
     const auto& xrdJs = info[1];
-    Public::Xrd xrd = xrdJsToCxx(env, xrdJs);
+    _xrd = xrdJsToCxx(env, xrdJs);
 
-    Napi::Object logger;
     if ((info.Length() == 3) && info[2].IsObject()) {
-        logger = info[2].As<Napi::Object>();
+        Napi::Object logger = info[2].As<Napi::Object>();
         // Hold reference to javascript object so we don't have to worry about
-        // a dangling pointer in the lambda we create.
+        // a dangling pointer.
         _logger =  Napi::ObjectReference::New(logger, 1);
-        XrdLogger* loggerWrapper = Napi::ObjectWrap<XrdLogger>::Unwrap(logger);
-        Public::XrdConnection::LogMessageFn logFn = [logger = loggerWrapper]
-            (Public::MessageSource source, const std::vector<uint8_t>& message) -> void {
-            logger->logMessage(static_cast<uint8_t>(source), message);
-        };
-        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                                 xrd,
-                                                                 logFn);
-    } else {
-        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                                 xrd);
     }
-
-    setPingResponseCallback(*_conn, info);
-    setConnectionStatusCallback(*_conn, info);
 }
 
 
@@ -199,6 +183,30 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
     }
 
     std::chrono::seconds timeout(info[0].As<Napi::Number>());
+
+    BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(_api.Value().As<Napi::Object>());
+    if (!_logger.IsEmpty()) {
+        // Hold reference to javascript object so we don't have to worry about
+        // a dangling pointer in the lambda we create.
+        XrdLogger* loggerWrapper = Napi::ObjectWrap<XrdLogger>::Unwrap(_logger.Value().As<Napi::Object>());
+        Public::XrdConnection::LogMessageFn logFn = [logger = loggerWrapper]
+            (Public::MessageSource source, const std::vector<uint8_t>& message) -> void {
+            logger->logMessage(static_cast<uint8_t>(source), message);
+        };
+        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                                 _xrd,
+                                                                 logFn);
+    } else {
+        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                                 _xrd);
+    }
+
+    setPingResponseCallback(*_conn, info);
+    setConnectionStatusCallback(*_conn, info);
+
+    if (_addVideoTrack) {
+        addVideoTrackToConn();
+    }
 
     // create function here and perform entire connection process on worker
     // thread so that any HTTP requests by openConnection() won't block
@@ -224,6 +232,11 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
+    if (!_conn) {
+        Napi::Error::New(env, "closed() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
     bool success = _conn->close();
 
     stopEmitter(info);
@@ -235,6 +248,8 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
             .Call(emit, { info.This() }).As<Napi::Function>();
         bound.Call({Napi::String::New(env, connectionStatus::event),
                 Napi::String::New(env, connectionStatus::disconnected)});
+
+        _conn.reset();
     }
 
     return Napi::Boolean::New(env, success);
@@ -243,6 +258,9 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::getConnectionStatus(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
+    if (!_conn) {
+        return Napi::String::New(env, connectionStatus::disconnected);
+    }
 
     botlink::Public::XrdConnectionState status  = _conn->getConnectionState();
     switch (status) {
@@ -274,6 +292,11 @@ Napi::Value XrdConnection::getAutopilotMessage(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    if (!_conn) {
+        Napi::Error::New(env, "getAutopilotMessage() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
     bool block = info[0].As<Napi::Boolean>();
 
     std::vector<uint8_t> msg = _conn->getAutopilotMessage(block);
@@ -297,6 +320,11 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
     // only want binary data here).
     if (!(info[0].IsBuffer() || info[0].IsTypedArray())) {
         Napi::TypeError::New(env, "Wrong argument. Expected Buffer or Uint8Array.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (!_conn) {
+        Napi::Error::New(env, "sendAutopilotMessage() called when connection not open.")
             .ThrowAsJavaScriptException();
     }
 
@@ -504,6 +532,13 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    _addVideoTrack = true;
+
+    return Napi::Boolean::New(env, true);
+}
+
+bool XrdConnection::addVideoTrackToConn()
+{
     auto callback = [&forwarder = _videoForwarder]
         (const uint8_t* packet, size_t length) {
         // Uncomment following for debugging.
@@ -527,7 +562,7 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
                               (const botlink::Public::VideoConfig& newConfig)
                               { config->setConfig(newConfig); });
 
-    return Napi::Boolean::New(env, true);
+    return true;
 }
 
 Napi::Value XrdConnection::setVideoForwardPort(const Napi::CallbackInfo& info)
@@ -550,6 +585,11 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
     if (!(info.Length() == 1 && info[0].IsObject())) {
         Napi::TypeError::New(env, "Wrong number of arguments. "
                              "Expected XrdVideoConfig object.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (!_conn) {
+        Napi::Error::New(env, "setVideoConfig() called when connection not open.")
             .ThrowAsJavaScriptException();
     }
 
@@ -610,6 +650,11 @@ Napi::Value XrdConnection::pauseVideo(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
+    if (!_conn) {
+        Napi::Error::New(env, "pauseVideo() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
     bool result = false;
     try {
         result = _conn->pauseVideo();
@@ -629,6 +674,11 @@ Napi::Value XrdConnection::pauseVideo(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::resumeVideo(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
+
+    if (!_conn) {
+        Napi::Error::New(env, "resumeVideo() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
 
     bool result = false;
     try {
@@ -652,6 +702,11 @@ Napi::Value XrdConnection::saveLogs(const Napi::CallbackInfo& info)
     if (!(info.Length() == 1 && info[0].IsFunction())) {
         Napi::TypeError::New(env, "Wrong number of arguments. "
                              "Expected callback function.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (!_conn) {
+        Napi::Error::New(env, "saveLogs() called when connection not open.")
             .ThrowAsJavaScriptException();
     }
 
@@ -704,6 +759,11 @@ Napi::Value XrdConnection::saveLogs(const Napi::CallbackInfo& info)
 
 Napi::Value XrdConnection::pingXrd(const Napi::CallbackInfo& info)
 {
+    if (!_conn) {
+        Napi::Error::New(info.Env(), "pingXrd() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
     std::optional<uint32_t> sequence;
     try {
         sequence = _conn->pingXrd();

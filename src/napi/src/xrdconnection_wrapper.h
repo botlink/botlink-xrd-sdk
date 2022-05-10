@@ -48,6 +48,8 @@ public:
 private:
     Napi::ObjectReference _api;
     Napi::ObjectReference _logger;
+    Public::Xrd _xrd;
+    bool _addVideoTrack;
     botlink::video::Forwarder _videoForwarder;
     std::unique_ptr<botlink::Public::XrdConnection> _conn;
     std::thread _workerThread;
@@ -56,6 +58,8 @@ private:
 
     Napi::Value startEmitter(const Napi::CallbackInfo& info);
     Napi::Value stopEmitter(const Napi::CallbackInfo& info);
+
+    bool addVideoTrackToConn();
 };
 
 }
