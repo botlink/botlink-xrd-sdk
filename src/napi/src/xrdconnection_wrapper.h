@@ -52,7 +52,6 @@ private:
     std::unique_ptr<botlink::Public::XrdConnection> _conn;
     std::thread _workerThread;
     std::atomic<bool> _runWorkerThread;
-    std::atomic<bool> _cancelConnectionAttempt;
     std::shared_ptr<VideoConfigThreadsafe> _videoConfig;
 
     Napi::Value startEmitter(const Napi::CallbackInfo& info);

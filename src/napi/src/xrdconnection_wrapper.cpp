@@ -32,7 +32,6 @@ public:
     ConnectWorker(Napi::Env& env,
                   Napi::Promise::Deferred deferred,
                   std::function<T> action,
-                  std::atomic<bool>& cancelled,
                   Napi::ObjectReference&& connectionRef,
                   botlink::Public::XrdConnection& connection)
     : Napi::AsyncWorker(env)
@@ -40,7 +39,6 @@ public:
     , _action(action)
     , _connectionRef(std::move(connectionRef))
     , _connection(&connection)
-    , _isCancelled(&cancelled)
     {}
 
     void Execute()
@@ -86,7 +84,6 @@ private:
     // worry about lifetimes
     Napi::ObjectReference _connectionRef;
     botlink::Public::XrdConnection* _connection;
-    std::atomic<bool>* _isCancelled;
 };
 }
 
@@ -138,7 +135,6 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
 XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 : Napi::ObjectWrap<XrdConnection>(info)
 , _runWorkerThread(false)
-, _cancelConnectionAttempt(false)
 , _videoConfig(std::make_shared<VideoConfigThreadsafe>())
 {
     Napi::Env env = info.Env();
@@ -202,8 +198,6 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    _cancelConnectionAttempt = false;
-
     std::chrono::seconds timeout(info[0].As<Napi::Number>());
 
     // create function here and perform entire connection process on worker
@@ -220,7 +214,7 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
     startEmitter(info);
 
     // node.js garbage collects this
-    auto* worker = new ConnectWorker<std::future<bool>()>(env, deferred, openFn, _cancelConnectionAttempt, std::move(ref), *_conn);
+    auto* worker = new ConnectWorker<std::future<bool>()>(env, deferred, openFn, std::move(ref), *_conn);
     worker->Queue();
 
     return deferred.Promise();
@@ -229,9 +223,6 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
 Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-
-    // clean up any connection that is in progress
-    _cancelConnectionAttempt = true;
 
     bool success = _conn->close();
 
