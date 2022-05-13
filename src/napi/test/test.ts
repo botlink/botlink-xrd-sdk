@@ -83,6 +83,9 @@ async function connect(api: ApiBindings) {
       conn.on(XrdConnectionEvents.PingResponse, (response) => {
         console.log(`Got ping reply ${JSON.stringify(response)}`)
       })
+      conn.on(XrdConnectionEvents.CellSignalInfo, (info) => {
+        console.log(`Got cell signal info ${JSON.stringify(info)}`)
+      })
 
       const videoConfig: XrdVideoConfig = {
         resolution: XrdVideoResolution.Resolution_480,

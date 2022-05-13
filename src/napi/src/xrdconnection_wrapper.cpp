@@ -16,6 +16,9 @@ std::string resolutionIntToString(const int width, const int height);
 void setPingResponseCallback(botlink::Public::XrdConnection& conn,
                              const Napi::CallbackInfo& info);
 
+void setCellSignalInfoCallback(botlink::Public::XrdConnection& conn,
+                               const Napi::CallbackInfo& info);
+
 void setConnectionStatusCallback(botlink::Public::XrdConnection& conn,
                                  const Napi::CallbackInfo& info);
 
@@ -202,6 +205,7 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
     }
 
     setPingResponseCallback(*_conn, info);
+    setCellSignalInfoCallback(*_conn, info);
     setConnectionStatusCallback(*_conn, info);
 
     if (_addVideoTrack) {
@@ -879,7 +883,7 @@ void setPingResponseCallback(botlink::Public::XrdConnection& conn,
             jsResponse.Set("latencyUs", Napi::Number::From(env, response->latency.count()));
             jsResponse.Set("jitterUs", Napi::Number::From(env, response->jitter.count()));
             delete response;
-            // The event name here needs to match the BotlinkApiEvents.NewTokens
+            // The event name here needs to match the XrdConnectionEvents.PingResponse
             // name in binding.ts.
             jsCallback.Call({Napi::String::New(env, "pingResponse"), jsResponse});
         };
@@ -894,6 +898,71 @@ void setPingResponseCallback(botlink::Public::XrdConnection& conn,
     };
 
     conn.onPingMessageResponse(callbackSdk);
+}
+
+void setCellSignalInfoCallback(botlink::Public::XrdConnection& conn,
+                               const Napi::CallbackInfo& info)
+{
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "Cell Signal Info Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread will use this initially
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (const botlink::Public::CellSignalInfo& info) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               botlink::Public::CellSignalInfo* info) {
+            auto jsInfo = Napi::Object::New(env);
+            if (info->info2g) {
+                jsInfo.Set("rat", "2G");
+                auto info2g = Napi::Object::New(env);
+                info2g.Set("rssi", Napi::Number::From(env, info->info2g->rssi));
+                jsInfo.Set("info", info2g);
+            } else if (info->info3g) {
+                jsInfo.Set("rat", "3G");
+                auto info3g = Napi::Object::New(env);
+                info3g.Set("rssi", Napi::Number::From(env, info->info3g->rssi));
+                info3g.Set("rscp", Napi::Number::From(env, info->info3g->rscp));
+                info3g.Set("ecio", Napi::Number::From(env, info->info3g->ecio));
+                jsInfo.Set("info", info3g);
+            } else if (info->infoLte) {
+                jsInfo.Set("rat", "LTE");
+                auto infoLte = Napi::Object::New(env);
+                infoLte.Set("rssi", Napi::Number::From(env, info->infoLte->rssi));
+                infoLte.Set("rsrq", Napi::Number::From(env, info->infoLte->rsrq));
+                infoLte.Set("rsrp", Napi::Number::From(env, info->infoLte->rsrp));
+                infoLte.Set("snr", Napi::Number::From(env, info->infoLte->snr));
+                jsInfo.Set("info", infoLte);
+            }
+            delete info;
+            // The event name here needs to match the XrdConnectionEvents.CellSignalInfo
+            // name in binding.ts.
+            jsCallback.Call({Napi::String::New(env, "cellSignalInfo"), jsInfo});
+        };
+        // Need to make a copy since it's gonna be used on another thread and
+        // we can't guarantee the lifetime of the response argument here.
+        auto infoCopy = std::make_unique<botlink::Public::CellSignalInfo>(info);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(infoCopy.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    conn.onCellSignalInfo(callbackSdk);
 }
 
 void setConnectionStatusCallback(botlink::Public::XrdConnection& conn,
