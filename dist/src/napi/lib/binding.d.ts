@@ -75,6 +75,37 @@ export interface XrdVideoConfig {
     state: XrdVideoState;
 }
 /**
+ * Interface for an object that holds 2G cell signal info
+ */
+export interface SignalInfo2g {
+    rssi: number;
+}
+/**
+ * Interface for an object that holds 3G cell signal info
+ */
+export interface SignalInfo3g {
+    rssi: number;
+    rscp: number;
+    ecio: number;
+}
+/**
+ * Interface for an object that holds LTE cell signal info
+ */
+export interface SignalInfoLte {
+    rssi: number;
+    rsrq: number;
+    rsrp: number;
+    snr: number;
+}
+/**
+ * Interface for an object holding cell signal info from an XRD
+ */
+export interface CellSignalInfo {
+    /** the radio access technology in use (2G, 3G, or LTE) */
+    rat: string;
+    info: SignalInfo2g | SignalInfo3g | SignalInfoLte;
+}
+/**
  * Interface for an object used to hold the ping response from an XRD.
  *
  * Note that the timestamps are based off of independent monotonic clocks (one
@@ -235,7 +266,9 @@ export declare enum XrdConnectionEvents {
     /** Event when the connection received a video configuration message from the XRD. */
     VideoConfig = "videoConfig",
     /** Event when the connection received a ping response message from the XRD. */
-    PingResponse = "pingResponse"
+    PingResponse = "pingResponse",
+    /** Event when the connection received a cell signal info message from the XRD. */
+    CellSignalInfo = "cellSignalInfo"
 }
 /**
  * This is the TypeScript interface for the C++ [[`XrdConnection`]] bindings.
@@ -286,6 +319,7 @@ export interface XrdConnectionBindings {
     on(event: XrdConnectionEvents.ConnectionStatus, callback: (status: XrdConnectionStatus) => void): void;
     on(event: XrdConnectionEvents.VideoConfig, callback: (config: XrdVideoConfig) => void): void;
     on(event: XrdConnectionEvents.PingResponse, callback: (response: XrdPingResponse) => void): void;
+    on(event: XrdConnectionEvents.CellSignalInfo, callback: (info: CellSignalInfo) => void): void;
     /**
      * Send an autopilot message to the XRD.
      *

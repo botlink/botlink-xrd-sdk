@@ -14,7 +14,7 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 var __importStar = (this && this.__importStar) || function (mod) {
     if (mod && mod.__esModule) return mod;
     var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
     __setModuleDefault(result, mod);
     return result;
 };
@@ -37,7 +37,7 @@ const urls = __importStar(require("./urls"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const loginPath = "/sessions/auth";
 const refreshPath = "/sessions/refresh";
-const auth = (email, password) => __awaiter(void 0, void 0, void 0, function* () {
+exports.auth = (email, password) => __awaiter(void 0, void 0, void 0, function* () {
     const response = yield fetch(urls.API + loginPath, {
         method: "POST",
         body: JSON.stringify({
@@ -62,8 +62,7 @@ const auth = (email, password) => __awaiter(void 0, void 0, void 0, function* ()
     const decoded = jsonwebtoken_1.default.decode(auth);
     return { token: auth, refresh, user: { id: +decoded.id } };
 });
-exports.auth = auth;
-const refresh = (refreshToken) => __awaiter(void 0, void 0, void 0, function* () {
+exports.refresh = (refreshToken) => __awaiter(void 0, void 0, void 0, function* () {
     const response = yield fetch(urls.API + refreshPath, {
         method: "POST",
         headers: {
@@ -79,7 +78,6 @@ const refresh = (refreshToken) => __awaiter(void 0, void 0, void 0, function* ()
     const decoded = jsonwebtoken_1.default.decode(auth);
     return { token: auth, refresh, user: { id: +decoded.id } };
 });
-exports.refresh = refresh;
 class AuthManager {
     constructor() { }
     scheduleRefresh(accessToken, refreshToken, credentialsCallback) {
@@ -99,7 +97,7 @@ class AuthManager {
             this.scheduledRefresh = setTimeout(() => __awaiter(this, void 0, void 0, function* () {
                 this.scheduledRefresh = undefined;
                 try {
-                    const newCredentials = yield (0, exports.refresh)(refreshToken);
+                    const newCredentials = yield exports.refresh(refreshToken);
                     this.scheduleRefresh(newCredentials.token, newCredentials.refresh, credentialsCallback);
                     credentialsCallback(newCredentials);
                 }

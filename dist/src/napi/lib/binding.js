@@ -84,6 +84,8 @@ var XrdConnectionEvents;
     XrdConnectionEvents["VideoConfig"] = "videoConfig";
     /** Event when the connection received a ping response message from the XRD. */
     XrdConnectionEvents["PingResponse"] = "pingResponse";
+    /** Event when the connection received a cell signal info message from the XRD. */
+    XrdConnectionEvents["CellSignalInfo"] = "cellSignalInfo";
 })(XrdConnectionEvents = exports.XrdConnectionEvents || (exports.XrdConnectionEvents = {}));
 /**
  * Enum used to tag the source of an autopilot message when logging an autopilot
@@ -102,8 +104,8 @@ var XrdLoggerSource;
     /** Autopilot message sent to the Ground Control Software */
     XrdLoggerSource[XrdLoggerSource["ToGcs"] = 8] = "ToGcs";
 })(XrdLoggerSource = exports.XrdLoggerSource || (exports.XrdLoggerSource = {}));
-(0, util_1.inherits)(CxxClient.BotlinkApi, events_1.EventEmitter);
-(0, util_1.inherits)(CxxClient.XrdConnection, events_1.EventEmitter);
+util_1.inherits(CxxClient.BotlinkApi, events_1.EventEmitter);
+util_1.inherits(CxxClient.XrdConnection, events_1.EventEmitter);
 /** C++ implementation of [[`ApiBindings`]] */
 let BotlinkApi = CxxClient.BotlinkApi;
 exports.BotlinkApi = BotlinkApi;

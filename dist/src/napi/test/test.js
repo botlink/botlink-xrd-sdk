@@ -85,6 +85,9 @@ function connect(api) {
                 conn.on(binding_2.XrdConnectionEvents.PingResponse, (response) => {
                     console.log(`Got ping reply ${JSON.stringify(response)}`);
                 });
+                conn.on(binding_2.XrdConnectionEvents.CellSignalInfo, (info) => {
+                    console.log(`Got cell signal info ${JSON.stringify(info)}`);
+                });
                 const videoConfig = {
                     resolution: binding_3.XrdVideoResolution.Resolution_480,
                     framerate: 30, codec: binding_2.XrdVideoCodec.H265,
