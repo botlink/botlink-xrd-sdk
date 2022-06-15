@@ -103,6 +103,8 @@ export interface SignalInfoLte {
 export interface CellSignalInfo {
     /** the radio access technology in use (2G, 3G, or LTE) */
     rat: string;
+    /** the sequence number of the cell signal info message */
+    sequence: number;
     info: SignalInfo2g | SignalInfo3g | SignalInfoLte;
 }
 /**

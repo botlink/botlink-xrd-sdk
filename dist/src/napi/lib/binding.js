@@ -104,8 +104,8 @@ var XrdLoggerSource;
     /** Autopilot message sent to the Ground Control Software */
     XrdLoggerSource[XrdLoggerSource["ToGcs"] = 8] = "ToGcs";
 })(XrdLoggerSource = exports.XrdLoggerSource || (exports.XrdLoggerSource = {}));
-util_1.inherits(CxxClient.BotlinkApi, events_1.EventEmitter);
-util_1.inherits(CxxClient.XrdConnection, events_1.EventEmitter);
+(0, util_1.inherits)(CxxClient.BotlinkApi, events_1.EventEmitter);
+(0, util_1.inherits)(CxxClient.XrdConnection, events_1.EventEmitter);
 /** C++ implementation of [[`ApiBindings`]] */
 let BotlinkApi = CxxClient.BotlinkApi;
 exports.BotlinkApi = BotlinkApi;

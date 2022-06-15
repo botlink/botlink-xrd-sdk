@@ -65,8 +65,8 @@ function connect(api) {
         let conn = null;
         try {
             let xrds = yield api.listXrds();
-            console.log(`connecting to XRD ${JSON.stringify(xrds[0])}`);
-            conn = new binding_1.XrdConnection(api, xrds[0]);
+            console.log(`connecting to XRD ${JSON.stringify(xrds[1])}`);
+            conn = new binding_1.XrdConnection(api, xrds[1]);
             conn.addVideoTrack();
             conn.setVideoForwardPort(61003);
             conn.on(binding_2.XrdConnectionEvents.ConnectionStatus, (status) => {
