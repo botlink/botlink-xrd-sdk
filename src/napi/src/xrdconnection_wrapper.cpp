@@ -926,6 +926,7 @@ void setCellSignalInfoCallback(botlink::Public::XrdConnection& conn,
         auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
                                botlink::Public::CellSignalInfo* info) {
             auto jsInfo = Napi::Object::New(env);
+            jsInfo.Set("sequence", Napi::Number::From(env, info->sequence));
             if (info->info2g) {
                 jsInfo.Set("rat", "2G");
                 auto info2g = Napi::Object::New(env);
