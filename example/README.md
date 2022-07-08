@@ -20,8 +20,10 @@ This example uses dotenv, so you can place these in a .env file in this director
 | --------------------- | --------- | ----------------------------------------------------------------------------- |
 | RELAY_XRD_EMAIL       | **yes**   | The email address of the owner of the XRD                                     |
 | RELAY_XRD_PASSWORD    | **yes**   | The password of the owner of the XRD                                          |
-| RELAY_XRD_HARDWARE_ID | **yes**   | The hardware ID of the XRD (no dashes)                                        |
-| PORT                  | no        | The port used to listen for connections from QGroundControl. Defaults to 8080 |
+| RELAY_XRD_HARDWARE_ID | **yes**   | The hardware ID of the XRD (with dashes)                                      |
+| PORT                  | no        | The port used to listen for GCS Connections. Defaults to tcp 5760 or udp 14650|
+| WRITEPORT             | no        | The port used to send messages to GCS. UDP Only. Defaults to 14550            |
+| WRITEADDR             | no        | The IP address of the GCS. UDP Only. Defaults to 127.0.0.1                    |
 
 ## Running
 

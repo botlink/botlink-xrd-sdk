@@ -83,8 +83,9 @@ const authenticate = async relay => {
 
   server = udp.createSocket("udp4");
 
-  const port = process.env.PORT || 8080;
-  const writePort = port + 1;
+  const port = process.env.PORT || 14650;
+  const writePort = process.env.WRITEPORT || 14550;
+  const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
 
   const xrdSocket = new XRDSocket({
     xrd,
@@ -99,12 +100,12 @@ const authenticate = async relay => {
 
   xrdSocket.on("data", message => {
     console.log("From XRD:", Buffer.from(message).toString("hex"));
-    server.send(message, writePort);
+    server.send(message, writePort, gcsAddr);
   });
 
   xrdSocket.connect(() => {
     server.bind(port, () => {
-      console.log(`Listening on port ${port}`);
+      console.log(`Listening on UDP ${port}. Sending to ${gcsAddr}:${writePort}`);
 
       server.on("message", (message, rinfo) => {
         console.log("From GCS:", Buffer.from(message).toString("hex"));
