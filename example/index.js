@@ -132,6 +132,10 @@ const handleSocket = async (relay, socket) => {
   })
 }
 
+
+const port = process.env.PORT || 5760;
+const bindAddr = process.env.BINDADDR || '127.0.0.1';
+
 (async () => {
   const relay = {
     xrd: {
@@ -145,7 +149,8 @@ const handleSocket = async (relay, socket) => {
     await handleSocket(relay, socket)
   })
 
-  server.listen(process.env.PORT || 5760)
+  server.listen(port, bindAddr)
+  console.log(`Listening on TCP ${bindAddr}:${port}.`);
 })().catch((error => {
   console.error('[ERROR] ', error)
 
