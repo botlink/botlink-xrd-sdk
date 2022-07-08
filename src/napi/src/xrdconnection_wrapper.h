@@ -31,7 +31,7 @@ public:
 
     Napi::Value openConnection(const Napi::CallbackInfo& info);
     Napi::Value closeConnection(const Napi::CallbackInfo& info);
-    Napi::Value isConnected(const Napi::CallbackInfo& info);
+    Napi::Value getConnectionStatus(const Napi::CallbackInfo& info);
 
     Napi::Value getAutopilotMessage(const Napi::CallbackInfo& info);
     Napi::Value sendAutopilotMessage(const Napi::CallbackInfo& info);
@@ -39,19 +39,27 @@ public:
     Napi::Value addVideoTrack(const Napi::CallbackInfo& info);
     Napi::Value setVideoForwardPort(const Napi::CallbackInfo& info);
     Napi::Value setVideoConfig(const Napi::CallbackInfo& info);
+    Napi::Value pauseVideo(const Napi::CallbackInfo& info);
+    Napi::Value resumeVideo(const Napi::CallbackInfo& info);
+    Napi::Value saveLogs(const Napi::CallbackInfo& info);
+
+    Napi::Value pingXrd(const Napi::CallbackInfo& info);
 
 private:
     Napi::ObjectReference _api;
     Napi::ObjectReference _logger;
+    Public::Xrd _xrd;
+    bool _addVideoTrack;
     botlink::video::Forwarder _videoForwarder;
     std::unique_ptr<botlink::Public::XrdConnection> _conn;
     std::thread _workerThread;
     std::atomic<bool> _runWorkerThread;
-    std::atomic<bool> _cancelConnectionAttempt;
     std::shared_ptr<VideoConfigThreadsafe> _videoConfig;
 
     Napi::Value startEmitter(const Napi::CallbackInfo& info);
     Napi::Value stopEmitter(const Napi::CallbackInfo& info);
+
+    bool addVideoTrackToConn();
 };
 
 }

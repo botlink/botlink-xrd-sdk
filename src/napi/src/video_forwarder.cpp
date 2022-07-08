@@ -85,7 +85,7 @@ int Forwarder::getPort() const
     return ntohs(static_cast<unsigned short>(port));
 }
 
-bool Forwarder::forward(uint8_t* data, int length)
+bool Forwarder::forward(const uint8_t* data, int length)
 {
     std::lock_guard<std::mutex> lock(_mutex);
     if (sendto(_fd, reinterpret_cast<const char*>(data), length,

@@ -13,8 +13,18 @@ namespace {
 std::pair<int, int> resolutionStringToInt(const std::string& resolution);
 std::string resolutionIntToString(const int width, const int height);
 
+void setPingResponseCallback(botlink::Public::XrdConnection& conn,
+                             const Napi::CallbackInfo& info);
+
+void setCellSignalInfoCallback(botlink::Public::XrdConnection& conn,
+                               const Napi::CallbackInfo& info);
+
+void setConnectionStatusCallback(botlink::Public::XrdConnection& conn,
+                                 const Napi::CallbackInfo& info);
+
 namespace connectionStatus {
 const char connected[] = "Connected";
+const char connecting[] = "Connecting";
 const char disconnected[] = "Disconnected";
 const char event[] = "connectionStatus";
 }
@@ -25,7 +35,6 @@ public:
     ConnectWorker(Napi::Env& env,
                   Napi::Promise::Deferred deferred,
                   std::function<T> action,
-                  std::atomic<bool>& cancelled,
                   Napi::ObjectReference&& connectionRef,
                   botlink::Public::XrdConnection& connection)
     : Napi::AsyncWorker(env)
@@ -33,33 +42,15 @@ public:
     , _action(action)
     , _connectionRef(std::move(connectionRef))
     , _connection(&connection)
-    , _isCancelled(&cancelled)
     {}
 
     void Execute()
     {
         try {
+            // This blocks during the initial http requests that get a token
+            // and the ice server config. So that's why we open a connection
+            // from a worker thread.
             auto future = _action();
-
-            while (true) {
-                const std::future_status status = future.wait_for(std::chrono::milliseconds(100));
-                if (status == std::future_status::ready) {
-                    break;
-                } else if (status == std::future_status::timeout) {
-                    if (_isCancelled->load()) {
-                        // Still need to call cancelOpen() in case an
-                        // async race in the relay app caused the call
-                        // to cancelOpen() in closeConnection() to
-                        // happen before the call to openConnection()
-                        _connection->cancelOpen();
-                        SetError("Connection attempt cancelled");
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-
             _result = future.get();
             if (!_result) {
                 SetError("Failed to start connection");
@@ -96,7 +87,6 @@ private:
     // worry about lifetimes
     Napi::ObjectReference _connectionRef;
     botlink::Public::XrdConnection* _connection;
-    std::atomic<bool>* _isCancelled;
 };
 }
 
@@ -126,12 +116,16 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
                     "XrdConnection",
                     {InstanceMethod("openConnection", &XrdConnection::openConnection),
                      InstanceMethod("closeConnection", &XrdConnection::closeConnection),
-                     InstanceMethod("isConnected", &XrdConnection::isConnected),
+                     InstanceMethod("getConnectionStatus", &XrdConnection::getConnectionStatus),
                      InstanceMethod("getAutopilotMessage", &XrdConnection::getAutopilotMessage),
                      InstanceMethod("sendAutopilotMessage", &XrdConnection::sendAutopilotMessage),
                      InstanceMethod("addVideoTrack", &XrdConnection::addVideoTrack),
                      InstanceMethod("setVideoForwardPort", &XrdConnection::setVideoForwardPort),
-                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig)});
+                     InstanceMethod("setVideoConfig", &XrdConnection::setVideoConfig),
+                     InstanceMethod("pauseVideo", &XrdConnection::pauseVideo),
+                     InstanceMethod("resumeVideo", &XrdConnection::resumeVideo),
+                     InstanceMethod("saveLogs", &XrdConnection::saveLogs),
+                     InstanceMethod("pingXrd", &XrdConnection::pingXrd)});
 
     Napi::FunctionReference* constructor = new Napi::FunctionReference;
     *constructor = Napi::Persistent(func);
@@ -144,7 +138,6 @@ Napi::Object XrdConnection::Init(Napi::Env env, Napi::Object exports)
 XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
 : Napi::ObjectWrap<XrdConnection>(info)
 , _runWorkerThread(false)
-, _cancelConnectionAttempt(false)
 , _videoConfig(std::make_shared<VideoConfigThreadsafe>())
 {
     Napi::Env env = info.Env();
@@ -164,28 +157,15 @@ XrdConnection::XrdConnection(const Napi::CallbackInfo& info)
     // dangling pointers.
     Napi::Object obj = apiJs.As<Napi::Object>();
     _api =  Napi::ObjectReference::New(obj, 1);
-    BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(obj);
 
     const auto& xrdJs = info[1];
-    Public::Xrd xrd = xrdJsToCxx(env, xrdJs);
+    _xrd = xrdJsToCxx(env, xrdJs);
 
-    Napi::Object logger;
     if ((info.Length() == 3) && info[2].IsObject()) {
-        logger = info[2].As<Napi::Object>();
+        Napi::Object logger = info[2].As<Napi::Object>();
         // Hold reference to javascript object so we don't have to worry about
-        // a dangling pointer in the lambda we create.
+        // a dangling pointer.
         _logger =  Napi::ObjectReference::New(logger, 1);
-        XrdLogger* loggerWrapper = Napi::ObjectWrap<XrdLogger>::Unwrap(logger);
-        Public::XrdConnection::LogMessageFn logFn = [logger = loggerWrapper]
-            (Public::MessageSource source, const std::vector<uint8_t>& message) -> void {
-            logger->logMessage(static_cast<uint8_t>(source), message);
-        };
-        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                                 xrd,
-                                                                 logFn);
-    } else {
-        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
-                                                                 xrd);
     }
 }
 
@@ -205,9 +185,32 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
-    _cancelConnectionAttempt = false;
-
     std::chrono::seconds timeout(info[0].As<Napi::Number>());
+
+    BotlinkApi* apiWrapper = Napi::ObjectWrap<BotlinkApi>::Unwrap(_api.Value().As<Napi::Object>());
+    if (!_logger.IsEmpty()) {
+        // Hold reference to javascript object so we don't have to worry about
+        // a dangling pointer in the lambda we create.
+        XrdLogger* loggerWrapper = Napi::ObjectWrap<XrdLogger>::Unwrap(_logger.Value().As<Napi::Object>());
+        Public::XrdConnection::LogMessageFn logFn = [logger = loggerWrapper]
+            (Public::MessageSource source, const std::vector<uint8_t>& message) -> void {
+            logger->logMessage(static_cast<uint8_t>(source), message);
+        };
+        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                                 _xrd,
+                                                                 logFn);
+    } else {
+        _conn = std::make_unique<botlink::Public::XrdConnection>(apiWrapper->getApi(),
+                                                                 _xrd);
+    }
+
+    setPingResponseCallback(*_conn, info);
+    setCellSignalInfoCallback(*_conn, info);
+    setConnectionStatusCallback(*_conn, info);
+
+    if (_addVideoTrack) {
+        addVideoTrackToConn();
+    }
 
     // create function here and perform entire connection process on worker
     // thread so that any HTTP requests by openConnection() won't block
@@ -223,7 +226,7 @@ Napi::Value XrdConnection::openConnection(const Napi::CallbackInfo& info)
     startEmitter(info);
 
     // node.js garbage collects this
-    auto* worker = new ConnectWorker<std::future<bool>()>(env, deferred, openFn, _cancelConnectionAttempt, std::move(ref), *_conn);
+    auto* worker = new ConnectWorker<std::future<bool>()>(env, deferred, openFn, std::move(ref), *_conn);
     worker->Queue();
 
     return deferred.Promise();
@@ -233,9 +236,10 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
 
-    // clean up any connection that is in progress
-    _conn->cancelOpen();
-    _cancelConnectionAttempt = true;
+    if (!_conn) {
+        Napi::Error::New(env, "closed() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
 
     bool success = _conn->close();
 
@@ -248,18 +252,35 @@ Napi::Value XrdConnection::closeConnection(const Napi::CallbackInfo& info)
             .Call(emit, { info.This() }).As<Napi::Function>();
         bound.Call({Napi::String::New(env, connectionStatus::event),
                 Napi::String::New(env, connectionStatus::disconnected)});
+
+        _conn.reset();
     }
 
     return Napi::Boolean::New(env, success);
 }
 
-Napi::Value XrdConnection::isConnected(const Napi::CallbackInfo& info)
+Napi::Value XrdConnection::getConnectionStatus(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
+    if (!_conn) {
+        return Napi::String::New(env, connectionStatus::disconnected);
+    }
 
-    bool connected = _conn->isConnected();
-
-    return Napi::Boolean::New(env, connected);
+    botlink::Public::XrdConnectionState status  = _conn->getConnectionState();
+    switch (status) {
+        case botlink::Public::XrdConnectionState::NotConnected:
+            return Napi::String::New(env, connectionStatus::disconnected);
+            break;
+        case botlink::Public::XrdConnectionState::Connecting:
+            return Napi::String::New(env, connectionStatus::connecting);
+            break;
+        case botlink::Public::XrdConnectionState::Connected:
+            return Napi::String::New(env, connectionStatus::connected);
+            break;
+        default:
+            return Napi::String::New(env, connectionStatus::disconnected);
+            break;
+    }
 }
 
 Napi::Value XrdConnection::getAutopilotMessage(const Napi::CallbackInfo& info)
@@ -272,6 +293,11 @@ Napi::Value XrdConnection::getAutopilotMessage(const Napi::CallbackInfo& info)
 
     if (!info[0].IsBoolean()) {
         Napi::TypeError::New(env, "Wrong argument. Expected boolean.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (!_conn) {
+        Napi::Error::New(env, "getAutopilotMessage() called when connection not open.")
             .ThrowAsJavaScriptException();
     }
 
@@ -298,6 +324,11 @@ Napi::Value XrdConnection::sendAutopilotMessage(const Napi::CallbackInfo& info)
     // only want binary data here).
     if (!(info[0].IsBuffer() || info[0].IsTypedArray())) {
         Napi::TypeError::New(env, "Wrong argument. Expected Buffer or Uint8Array.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (!_conn) {
+        Napi::Error::New(env, "sendAutopilotMessage() called when connection not open.")
             .ThrowAsJavaScriptException();
     }
 
@@ -406,28 +437,25 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                     break;
             }
 
+            switch (config->state) {
+                // Note that the strings we use for the value in the call to
+                // Set() must match the values in the XrdVideoState enum in
+                // binding.ts
+                case botlink::Public::VideoState::Paused:
+                    videoConfig.Set("state", Napi::Value::From(env, "Paused"));
+                    break;
+                case botlink::Public::VideoState::Playing:
+                    videoConfig.Set("state", Napi::Value::From(env, "Playing"));
+                    break;
+                default:
+                    videoConfig.Set("state", Napi::Value::From(env, "Unknown"));
+                    break;
+            }
+
             jsCallback.Call( {Napi::String::New( env, "videoConfig" ), videoConfig} );
 
             delete config;
         };
-
-        auto callbackConnectionStatus = []( Napi::Env env, Napi::Function jsCallback,
-                                            bool* connected) {
-            // Transform native data into JS data, passing it to the provided
-            // `jsCallback` -- the TSFN's JavaScript function.
-            // TODO(cgrahn): Use enum instead of bool?
-            if (*connected) {
-                jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                        Napi::String::New(env, connectionStatus::connected)});
-            } else {
-                jsCallback.Call({Napi::String::New(env, connectionStatus::event),
-                        Napi::String::New(env, connectionStatus::disconnected)});
-            }
-
-            delete connected;
-        };
-
-        bool connected = conn.isConnected();
 
         auto tasksLastRan = std::chrono::steady_clock::now();
         while (true)
@@ -457,6 +485,8 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
             if (timeDiff >= timeout) {
                 tasksLastRan = now;
 
+                // TODO(cgrahn): This should run off of a callback instead of
+                // being polled here.
                 // Check for new video config
                 auto config = videoConfig->getConfig();
                 if (config) {
@@ -471,18 +501,6 @@ Napi::Value XrdConnection::startEmitter(const Napi::CallbackInfo& info)
                         break;
                     }
                 }
-
-                bool connectedNow = conn.isConnected();
-                if (connectedNow != connected) {
-                    // emit "connectionStatus" event
-                    auto copy = std::make_unique<bool>(connectedNow);
-                    napi_status status = fn.BlockingCall(copy.release(), callbackConnectionStatus);
-                    if (status != napi_ok)
-                    {
-                        break;
-                    }
-                }
-                connected = connectedNow;
             }
         }
 
@@ -518,8 +536,15 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    _addVideoTrack = true;
+
+    return Napi::Boolean::New(env, true);
+}
+
+bool XrdConnection::addVideoTrackToConn()
+{
     auto callback = [&forwarder = _videoForwarder]
-        (uint8_t* packet, size_t length) {
+        (const uint8_t* packet, size_t length) {
         // Uncomment following for debugging.
         // TODO(cgrahn): Do not use std::cout. It causes a crash on
         // Windows with "yarn dev" and is frustrating to debug. Need
@@ -541,7 +566,7 @@ Napi::Value XrdConnection::addVideoTrack(const Napi::CallbackInfo& info)
                               (const botlink::Public::VideoConfig& newConfig)
                               { config->setConfig(newConfig); });
 
-    return Napi::Boolean::New(env, true);
+    return true;
 }
 
 Napi::Value XrdConnection::setVideoForwardPort(const Napi::CallbackInfo& info)
@@ -567,6 +592,11 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
             .ThrowAsJavaScriptException();
     }
 
+    if (!_conn) {
+        Napi::Error::New(env, "setVideoConfig() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
     Public::VideoConfig config;
 
     try {
@@ -587,16 +617,176 @@ Napi::Value XrdConnection::setVideoConfig(const Napi::CallbackInfo& info)
         } else {
             config.codec = Public::VideoCodec::Unknown;
         }
+
+        // The strings we check here must match XrdVideoState in binding.ts
+        const std::string state = videoConfig.Get("state").As<Napi::String>();
+        if (state == "Paused") {
+            config.state = Public::VideoState::Paused;
+        } else if (state == "Playing") {
+            config.state = Public::VideoState::Playing;
+        } else {
+            config.state = Public::VideoState::Unknown;
+        }
     } catch (const Napi::Error& error) {
         Napi::Error::New(env, "Got exception parsing XrdVideoConfig object: " +
                          error.Message())
             .ThrowAsJavaScriptException();
     }
 
-    bool result = _conn->setVideoConfig(config);
-    // TODO(cgrahn): Need an event that indicates XRD changed video settings
+    bool result = false;
+    try {
+        result = _conn->setVideoConfig(config);
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
 
     return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::pauseVideo(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    if (!_conn) {
+        Napi::Error::New(env, "pauseVideo() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
+    bool result = false;
+    try {
+        result = _conn->pauseVideo();
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::resumeVideo(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+
+    if (!_conn) {
+        Napi::Error::New(env, "resumeVideo() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
+    bool result = false;
+    try {
+        result = _conn->resumeVideo();
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::saveLogs(const Napi::CallbackInfo& info)
+{
+    Napi::Env env = info.Env();
+    if (!(info.Length() == 1 && info[0].IsFunction())) {
+        Napi::TypeError::New(env, "Wrong number of arguments. "
+                             "Expected callback function.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (!_conn) {
+        Napi::Error::New(env, "saveLogs() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
+    Napi::Function jsCallback = info[0].As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we can call the javascript function from
+    // the C++ callback thread.
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        jsCallback,          // JavaScript function called asynchronously
+        "Save Logs Response Callback", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread should ever use this
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [safeCallback = std::move(workerFn)] (bool result) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               bool* result) {
+            auto jsResult = Napi::Boolean::New(env, *result);
+            delete result;
+            jsCallback.Call({jsResult});
+        };
+        auto resultPointer = std::make_unique<bool>(result);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = safeCallback.BlockingCall(resultPointer.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    bool result = false;
+    try {
+        result = _conn->saveLogs(callbackSdk);
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
+    return Napi::Boolean::New(env, result);
+}
+
+Napi::Value XrdConnection::pingXrd(const Napi::CallbackInfo& info)
+{
+    if (!_conn) {
+        Napi::Error::New(info.Env(), "pingXrd() called when connection not open.")
+            .ThrowAsJavaScriptException();
+    }
+
+    std::optional<uint32_t> sequence;
+    try {
+        sequence = _conn->pingXrd();
+    } catch (const botlink::Public::exception::BotlinkRuntime& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const botlink::Public::exception::BotlinkLogic& e) {
+        Napi::Error::New(info.Env(), e.what())
+            .ThrowAsJavaScriptException();
+    } catch (const std::exception& e) {
+        Napi::Error::New(info.Env(), std::string("Unexpected error: ") + e.what())
+            .ThrowAsJavaScriptException();
+    }
+
+    if (sequence) {
+        return Napi::Number::New(info.Env(), sequence.value());
+    }
+
+    return info.Env().Null();
 }
 
 }
@@ -658,6 +848,181 @@ std::string resolutionIntToString(const int width, const int height)
         resolution = "4k";
     }
     return resolution;
+}
+
+void setPingResponseCallback(botlink::Public::XrdConnection& conn,
+                             const Napi::CallbackInfo& info)
+{
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "Ping Response Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread will use this initially
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (const botlink::Public::PingResponse& response) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               botlink::Public::PingResponse* response) {
+            auto jsResponse = Napi::Object::New(env);
+            jsResponse.Set("sequence", Napi::Number::From(env, response->sequence));
+            jsResponse.Set("senderTimestampUs", Napi::Number::From(env, response->senderTimestamp.count()));
+            jsResponse.Set("receiverTimestampUs", Napi::Number::From(env, response->receiverTimestamp.count()));
+            jsResponse.Set("senderReceivedTimestampUs", Napi::Number::From(env, response->senderReceivedTimestamp.count()));
+            jsResponse.Set("latencyUs", Napi::Number::From(env, response->latency.count()));
+            jsResponse.Set("jitterUs", Napi::Number::From(env, response->jitter.count()));
+            delete response;
+            // The event name here needs to match the XrdConnectionEvents.PingResponse
+            // name in binding.ts.
+            jsCallback.Call({Napi::String::New(env, "pingResponse"), jsResponse});
+        };
+        // Need to make a copy since it's gonna be used on another thread and
+        // we can't guarantee the lifetime of the response argument here.
+        auto responseCopy = std::make_unique<botlink::Public::PingResponse>(response);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(responseCopy.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    conn.onPingMessageResponse(callbackSdk);
+}
+
+void setCellSignalInfoCallback(botlink::Public::XrdConnection& conn,
+                               const Napi::CallbackInfo& info)
+{
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "Cell Signal Info Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread will use this initially
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (const botlink::Public::CellSignalInfo& info) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               botlink::Public::CellSignalInfo* info) {
+            auto jsInfo = Napi::Object::New(env);
+            jsInfo.Set("sequence", Napi::Number::From(env, info->sequence));
+            if (info->info2g) {
+                jsInfo.Set("rat", "2G");
+                auto info2g = Napi::Object::New(env);
+                info2g.Set("rssi", Napi::Number::From(env, info->info2g->rssi));
+                jsInfo.Set("info", info2g);
+            } else if (info->info3g) {
+                jsInfo.Set("rat", "3G");
+                auto info3g = Napi::Object::New(env);
+                info3g.Set("rssi", Napi::Number::From(env, info->info3g->rssi));
+                info3g.Set("rscp", Napi::Number::From(env, info->info3g->rscp));
+                info3g.Set("ecio", Napi::Number::From(env, info->info3g->ecio));
+                jsInfo.Set("info", info3g);
+            } else if (info->infoLte) {
+                jsInfo.Set("rat", "LTE");
+                auto infoLte = Napi::Object::New(env);
+                infoLte.Set("rssi", Napi::Number::From(env, info->infoLte->rssi));
+                infoLte.Set("rsrq", Napi::Number::From(env, info->infoLte->rsrq));
+                infoLte.Set("rsrp", Napi::Number::From(env, info->infoLte->rsrp));
+                infoLte.Set("snr", Napi::Number::From(env, info->infoLte->snr));
+                jsInfo.Set("info", infoLte);
+            }
+            delete info;
+            // The event name here needs to match the XrdConnectionEvents.CellSignalInfo
+            // name in binding.ts.
+            jsCallback.Call({Napi::String::New(env, "cellSignalInfo"), jsInfo});
+        };
+        // Need to make a copy since it's gonna be used on another thread and
+        // we can't guarantee the lifetime of the response argument here.
+        auto infoCopy = std::make_unique<botlink::Public::CellSignalInfo>(info);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(infoCopy.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    conn.onCellSignalInfo(callbackSdk);
+}
+
+void setConnectionStatusCallback(botlink::Public::XrdConnection& conn,
+                                 const Napi::CallbackInfo& info)
+{
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "Connection Status Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread uses this
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (botlink::Public::XrdConnectionState state) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               botlink::Public::XrdConnectionState* state) {
+            const char* status;
+            switch (*state) {
+                case botlink::Public::XrdConnectionState::NotConnected:
+                    status = connectionStatus::disconnected;
+                    break;
+                case botlink::Public::XrdConnectionState::Connecting:
+                    status = connectionStatus::connecting;
+                    break;
+                case botlink::Public::XrdConnectionState::Connected:
+                    status = connectionStatus::connected;
+                    break;
+                default:
+                    status = connectionStatus::disconnected;
+                    break;
+            }
+
+            delete state;
+            jsCallback.Call({Napi::String::New(env, connectionStatus::event),
+                    Napi::String::New(env, status)});
+        };
+        // Need to make a copy since it's gonna be used on another thread and
+        // we can't guarantee the lifetime of the response argument here.
+        auto statusCopy = std::make_unique<botlink::Public::XrdConnectionState>(state);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(statusCopy.release(), nodeCallback);
+        if (status != napi_ok) {
+            fprintf(stderr, "Failed to call emitter. Status %d\n", status);
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    conn.onConnectionStateChange(callbackSdk);
 }
 
 }

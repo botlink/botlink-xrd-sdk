@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <optional>
+#include <utility>
 
 namespace {
 
@@ -101,6 +102,46 @@ Napi::Object BotlinkApi::Init(Napi::Env env, Napi::Object exports)
 BotlinkApi::BotlinkApi(const Napi::CallbackInfo& info)
 : Napi::ObjectWrap<BotlinkApi>(info)
 {
+    Napi::Function emit = info.This().As<Napi::Object>().Get("emit")
+        .As<Napi::Function>();
+    Napi::Function bound = emit.Get("bind").As<Napi::Function>()
+        .Call(emit, { info.This() }).As<Napi::Function>();
+
+    // Create ThreadSafeFunction so we don't have to worry about which thread
+    // calls "emit".
+    Napi::ThreadSafeFunction workerFn = Napi::ThreadSafeFunction::New(
+        info.Env(),
+        bound,         // JavaScript function called asynchronously
+        "New Token Emitter", // Name
+        0,             // Unlimited queue
+        1,             // Only one thread will use this initially
+        []( Napi::Env ) { // Finalizer
+            // Do nothing.
+        } );
+
+    // callbackSdk gets called by the C++ SDK
+    auto callbackSdk = [emitter = std::move(workerFn)] (const std::string& auth,
+                                                        const std::string& refresh) -> void {
+        // nodeCallback gets called on Node's main thread
+        auto nodeCallback = [](Napi::Env env, Napi::Function jsCallback,
+                               std::pair<std::string, std::string>* tokens) {
+            auto jsTokens = Napi::Object::New(env);
+            jsTokens.Set("auth", Napi::Value::From(env, tokens->first));
+            jsTokens.Set("refresh", Napi::Value::From(env, tokens->second));
+            delete tokens;
+            // The event name here needs to match the BotlinkApiEvents.NewTokens
+            // name in binding.ts.
+            jsCallback.Call({Napi::String::New(env, "NewTokens"), jsTokens});
+        };
+        auto tokens = std::make_unique<std::pair<std::string, std::string>>(auth, refresh);
+        // This schedules nodeCallback to be called on Node's main thread.
+        napi_status status = emitter.BlockingCall(tokens.release(), nodeCallback);
+        if (status != napi_ok) {
+            // TODO(cgrahn): Handle error
+        }
+    };
+
+    _api.setNewTokenCallback(callbackSdk);
 }
 
 
@@ -161,9 +202,9 @@ Napi::Value BotlinkApi::login(const Napi::CallbackInfo& info)
         }
     }
 
-    // create function here and perform entire connection process on worker
-    // thread so that any HTTP requests by login() won't block
-    // node.js's main thread.
+    // This creates a function here which is then used to perform the
+    // entire connection process on a worker thread. That way any HTTP
+    // requests made by login() don't block node.js's main thread.
     // TODO(cgrahn): Update here if/when BotlinkApi class is non-blocking
     auto loginFn = [&api = _api, usernameOrToken, password, timeout] () {
         if (password) {
@@ -465,7 +506,15 @@ botlink::Public::Xrd xrdJsToCxx(Napi::Env& env, const Napi::Value& xrdJs)
     }
 
     Public::Xrd xrd;
-    xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
+    // The XRD does not always have a name assigned in the backend database. So
+    // handle exception here (usually caused by "name" being set to undefined or
+    // null).
+    try {
+        xrd.name = xrdJs.As<Napi::Object>().Get("name").As<Napi::String>();
+    } catch (Napi::Error& e) {
+        (void) e;
+        xrd.name = "";
+    }
     xrd.hardwareId = xrdJs.As<Napi::Object>().Get("hardwareId").As<Napi::String>();
     xrd.id = xrdJs.As<Napi::Object>().Get("id").As<Napi::Number>().Int32Value();
 

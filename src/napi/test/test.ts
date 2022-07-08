@@ -1,23 +1,41 @@
 import { BotlinkApi, XrdConnection } from '../lib/binding'
 import { ApiBindings, XrdConnectionBindings } from '../lib/binding'
 import { ApiLoginUsername, ApiLoginToken } from '../lib/binding'
-import { XrdConnectionEvents, XrdVideoCodec, XrdVideoConfig } from '../lib/binding'
+import { XrdConnectionEvents, XrdVideoCodec, XrdVideoConfig, XrdVideoState } from '../lib/binding'
 import { XrdVideoResolution } from '../lib/binding'
+import { BotlinkApiEvents } from '../lib/binding'
 
 let sendPeriodic = (conn: XrdConnectionBindings) => {
   console.log('sending autopilot message')
   let msg = new Buffer([0, 1, 2, 3, 4])
-  conn.sendAutopilotMessage(msg)
+  try {
+    conn.sendAutopilotMessage(msg)
+  } catch (err) {
+    console.log(`Got error '${err}' sending autopilot message`)
+  }
+}
+
+let pingPeriodic = (conn: XrdConnectionBindings) => {
+  console.log('pinging xrd')
+  try {
+    conn.pingXrd()
+  } catch (err) {
+    console.log(`Got error '${err}' pinging XRD`)
+  }
 }
 
 let closeConnection = (conn: XrdConnectionBindings,
-  sendInterval: ReturnType<typeof setInterval>) => {
+  sendInterval: ReturnType<typeof setInterval>,
+  pingInterval: ReturnType<typeof setInterval>) => {
   // Stop sending
   clearInterval(sendInterval)
+  clearInterval(pingInterval)
 
   console.log('closing connection')
   conn.closeConnection()
   console.log('closed connection')
+
+  process.exit(0)
 }
 
 async function login(api: ApiBindings, username: string, password: string) {
@@ -41,12 +59,16 @@ async function login(api: ApiBindings, username: string, password: string) {
 }
 
 async function connect(api: ApiBindings) {
+  let conn = null
   try {
     let xrds = await api.listXrds()
     console.log(`connecting to XRD ${JSON.stringify(xrds[0])}`)
-    let conn = new XrdConnection(api, xrds[0])
+    conn = new XrdConnection(api, xrds[0])
     conn.addVideoTrack()
     conn.setVideoForwardPort(61003)
+    conn.on(XrdConnectionEvents.ConnectionStatus, (status) => {
+      console.log(`Got connectionStatus: ${status}`)
+    })
     let connected = await conn.openConnection(30)
     if (connected) {
       //conn.startEmitter()
@@ -58,27 +80,40 @@ async function connect(api: ApiBindings) {
       conn.on(XrdConnectionEvents.VideoConfig, (config) => {
         console.log(`Got video config reply ${JSON.stringify(config)}`)
       })
-      conn.on(XrdConnectionEvents.ConnectionStatus, (status) => {
-        console.log(`Got connectionStatus: ${status}`)
+      conn.on(XrdConnectionEvents.PingResponse, (response) => {
+        console.log(`Got ping reply ${JSON.stringify(response)}`)
+      })
+      conn.on(XrdConnectionEvents.CellSignalInfo, (info) => {
+        console.log(`Got cell signal info ${JSON.stringify(info)}`)
       })
 
       const videoConfig: XrdVideoConfig = {
         resolution: XrdVideoResolution.Resolution_480,
-        framerate: 30, codec: XrdVideoCodec.H265
+        framerate: 30, codec: XrdVideoCodec.H265,
+        state: XrdVideoState.Playing
       }
       conn.setVideoConfig(videoConfig)
 
       let sendInterval = setInterval(sendPeriodic, 5000, conn)
+      let pingInterval = setInterval(pingPeriodic, 1000, conn)
       // Close the conection after 20 seconds
-      setTimeout(closeConnection, 20000, conn, sendInterval)
+      setTimeout(closeConnection, 20000, conn, sendInterval, pingInterval)
     }
   } catch (err) {
     console.log(`failed to connect to xrd due to ${err}`)
+    if (conn) {
+      conn.closeConnection()
+    }
+    process.exit(1)
   }
 }
 
 async function main() {
   let api = new BotlinkApi()
+  api.on(BotlinkApiEvents.NewTokens, ({ auth, refresh }) => {
+    console.log(`Got auth token: ${auth}`)
+    console.log(`Got refresh token: ${refresh}`)
+  })
 
   if (process.argv.length === 3) {
     // script called directly, e.g., "/path/to/test.js"
@@ -90,6 +125,7 @@ async function main() {
     connect(api)
   } else {
     console.log('Need to be called with username and password')
+    process.exit(1)
   }
 }
 

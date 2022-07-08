@@ -8,6 +8,15 @@ import { EventEmitter } from 'events'
 import { inherits } from 'util'
 
 /**
+ * Events emitted by BotlinkApi
+ *
+ * [[`BotlinkApi`]] emits these
+ */
+export enum BotlinkApiEvents {
+  NewTokens = 'NewTokens'
+}
+
+/**
  * The status of a connection to an XRD.
  *
  * [[`XrdConnection`]] emits this as part of an
@@ -59,14 +68,80 @@ export enum XrdVideoCodec {
   H264 = 'H264',
   H265 = 'H265'
 }
-
+/**
+ * State of the video stream from the XRD
+ */
+export enum XrdVideoState {
+  Unknown = 'Unknown',
+  Paused = 'Paused',
+  Playing = 'Playing'
+}
 /**
  * Interface for an object used to configure the RTP stream sent from an XRD.
  */
 export interface XrdVideoConfig {
   resolution: XrdVideoResolution
   framerate: number,
-  codec: XrdVideoCodec
+  codec: XrdVideoCodec,
+  state: XrdVideoState
+}
+
+/**
+ * Interface for an object that holds 2G cell signal info
+ */
+export interface SignalInfo2g {
+  rssi: number,
+}
+
+/**
+ * Interface for an object that holds 3G cell signal info
+ */
+export interface SignalInfo3g {
+  rssi: number,
+  rscp: number,
+  ecio: number,
+}
+
+/**
+ * Interface for an object that holds LTE cell signal info
+ */
+export interface SignalInfoLte {
+  rssi: number,
+  rsrq: number,
+  rsrp: number,
+  snr: number,
+}
+
+/**
+ * Interface for an object holding cell signal info from an XRD
+ */
+export interface CellSignalInfo {
+  /** the radio access technology in use (2G, 3G, or LTE) */
+  rat: string,
+  /** the sequence number of the cell signal info message */
+  sequence: number,
+  info: SignalInfo2g | SignalInfo3g | SignalInfoLte,
+}
+
+/**
+ * Interface for an object used to hold the ping response from an XRD.
+ *
+ * Note that the timestamps are based off of independent monotonic clocks (one
+ * clock on this machine, one on the XRD).
+ */
+export interface XrdPingResponse {
+  /** the sequence number of the ping message and response */
+  sequence: number,
+  /** time in microseconds when we sent the ping message */
+  senderTimestampUs: number,
+  /** time in microseconds when the XRD received the ping message */
+  receiverTimestampUs: number,
+  /** time in microseconds when we sent received the response from the XRD */
+  senderReceivedTimestampUs: number,
+  /** calculated latency in microseconds */
+  latencyUs: number,
+  /** calculated jitter of the latency in microseconds */
+  jitterUs: number
 }
 
 /**
@@ -116,6 +191,10 @@ export interface ApiBindings {
    * @returns `true` if logged in successfully, `false` otherwise
    */
   login(auth: ApiLoginUsername | ApiLoginToken, timeoutSeconds?: number): Promise<boolean>
+  /**
+   * Register callbacks for [[`BotlinkApiEvents`]].
+   */
+  on(event: BotlinkApiEvents.NewTokens, callback: (tokens: { auth: string, refresh: string }) => void): void
   /**
    * Refresh the tokens.
    *
@@ -204,7 +283,11 @@ export enum XrdConnectionEvents {
   /** Event when the status of the connection to the XRD changes. */
   ConnectionStatus = 'connectionStatus',
   /** Event when the connection received a video configuration message from the XRD. */
-  VideoConfig = 'videoConfig'
+  VideoConfig = 'videoConfig',
+  /** Event when the connection received a ping response message from the XRD. */
+  PingResponse = 'pingResponse',
+  /** Event when the connection received a cell signal info message from the XRD. */
+  CellSignalInfo = 'cellSignalInfo',
 }
 
 /**
@@ -244,17 +327,19 @@ export interface XrdConnectionBindings {
    */
   closeConnection(): boolean
   /**
-   * Query if the connection to an XRD is open.
+   * Query if state of the connection to an XRD
    *
-   * @returns `true` if connected to XRD, `false` otherwise
+   * @returns An [[`XrdConnectionStatus`]] value
    */
-  isConnected(): boolean
+  getConnectionStatus(): XrdConnectionStatus
   /**
    * Register callbacks for [[`XrdConnectionEvents`]].
    */
   on(event: XrdConnectionEvents.AutopilotMessage, callback: (message: Buffer) => void): void
   on(event: XrdConnectionEvents.ConnectionStatus, callback: (status: XrdConnectionStatus) => void): void
   on(event: XrdConnectionEvents.VideoConfig, callback: (config: XrdVideoConfig) => void): void
+  on(event: XrdConnectionEvents.PingResponse, callback: (response: XrdPingResponse) => void): void
+  on(event: XrdConnectionEvents.CellSignalInfo, callback: (info: CellSignalInfo) => void): void
   /**
    * Send an autopilot message to the XRD.
    *
@@ -289,6 +374,33 @@ export interface XrdConnectionBindings {
    * @returns `true` if video config successfully sent, `false` otherwise
    */
   setVideoConfig(config: XrdVideoConfig): boolean
+  /**
+   * Send a ping message to the currently connected XRD.
+   *
+   * After calling this method sucessfully, the caller gets an
+   * [[`XrdConnectionEvents.PingResponse`]] event when the response from the
+   * XRD is received.
+   *
+   * @returns `number` the sequence number of the ping message if sent successfully, `null` otherwise
+   */
+  pingXrd(): number | null
+  /**
+   * Pause the video stream from the XRD connection.
+   */
+  pauseVideo(): boolean
+  /**
+   * Resume the video stream from the XRD connection.
+   */
+  resumeVideo(): boolean
+  /**
+   * Send a request to the XRD to save its logs
+   *
+   * @param callback The function to call when a response to the request is
+   *                 received from the XRD
+   *
+   * @returns `true` if the request successfully sent, `false`  otherwise
+   */
+  saveLogs(callback: (success: boolean) => void): boolean
 }
 
 /**
@@ -325,6 +437,7 @@ export interface XrdLoggerBindings {
   logMessage(source: XrdLoggerSource, message: Buffer): void
 }
 
+inherits(CxxClient.BotlinkApi, EventEmitter)
 inherits(CxxClient.XrdConnection, EventEmitter)
 
 /** C++ implementation of [[`ApiBindings`]] */

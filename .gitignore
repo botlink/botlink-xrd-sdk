@@ -1,5 +1,4 @@
 node_modules/
 tmp/
 lib/binding/
-dist/
 .sdkpath

@@ -1,34 +1,50 @@
+"use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = exports.messages = void 0;
 /*eslint-disable block-scoped-var, id-length, no-control-regex, no-magic-numbers, no-prototype-builtins, no-redeclare, no-shadow, no-var, sort-vars*/
-import * as $protobuf from "protobufjs/minimal";
-
+const $protobuf = __importStar(require("protobufjs/minimal"));
 // Common aliases
 const $Reader = $protobuf.Reader, $Writer = $protobuf.Writer, $util = $protobuf.util;
-
 // Exported root namespace
 const $root = $protobuf.roots["default"] || ($protobuf.roots["default"] = {});
-
-export const messages = $root.messages = (() => {
-
+exports.default = $root;
+exports.messages = $root.messages = (() => {
     /**
      * Namespace messages.
      * @exports messages
      * @namespace
      */
     const messages = {
-      AutopilotMessage: null,
-      AutopilotMessageList: null,
-      DateTimeOffsetSurrogate: null
+        AutopilotMessage: null,
+        AutopilotMessageList: null,
+        DateTimeOffsetSurrogate: null
     };
-
-    messages.AutopilotMessage = (function() {
-
+    messages.AutopilotMessage = (function () {
         /**
          * Properties of an AutopilotMessage.
          * @memberof messages
          * @interface IAutopilotMessage
          * @property {Uint8Array} Payload AutopilotMessage Payload
          */
-
         /**
          * Constructs a new AutopilotMessage.
          * @memberof messages
@@ -43,7 +59,6 @@ export const messages = $root.messages = (() => {
                     if (properties[keys[i]] != null)
                         this[keys[i]] = properties[keys[i]];
         }
-
         /**
          * AutopilotMessage Payload.
          * @member {Uint8Array} Payload
@@ -51,7 +66,6 @@ export const messages = $root.messages = (() => {
          * @instance
          */
         AutopilotMessage.prototype.Payload = $util.newBuffer([]);
-
         /**
          * Creates a new AutopilotMessage instance using the specified properties.
          * @function create
@@ -63,7 +77,6 @@ export const messages = $root.messages = (() => {
         AutopilotMessage.create = function create(properties) {
             return new AutopilotMessage(properties);
         };
-
         /**
          * Encodes the specified AutopilotMessage message. Does not implicitly {@link messages.AutopilotMessage.verify|verify} messages.
          * @function encode
@@ -76,10 +89,9 @@ export const messages = $root.messages = (() => {
         AutopilotMessage.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
-            writer.uint32(/* id 1, wireType 2 =*/10).bytes(message.Payload);
+            writer.uint32(/* id 1, wireType 2 =*/ 10).bytes(message.Payload);
             return writer;
         };
-
         /**
          * Encodes the specified AutopilotMessage message, length delimited. Does not implicitly {@link messages.AutopilotMessage.verify|verify} messages.
          * @function encodeDelimited
@@ -92,7 +104,6 @@ export const messages = $root.messages = (() => {
         AutopilotMessage.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
-
         /**
          * Decodes an AutopilotMessage message from the specified reader or buffer.
          * @function decode
@@ -111,19 +122,18 @@ export const messages = $root.messages = (() => {
             while (reader.pos < end) {
                 let tag = reader.uint32();
                 switch (tag >>> 3) {
-                case 1:
-                    message.Payload = reader.bytes();
-                    break;
-                default:
-                    reader.skipType(tag & 7);
-                    break;
+                    case 1:
+                        message.Payload = reader.bytes();
+                        break;
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
                 }
             }
             if (!message.hasOwnProperty("Payload"))
                 throw $util.ProtocolError("missing required 'Payload'", { instance: message });
             return message;
         };
-
         /**
          * Decodes an AutopilotMessage message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
@@ -139,7 +149,6 @@ export const messages = $root.messages = (() => {
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
-
         /**
          * Verifies an AutopilotMessage message.
          * @function verify
@@ -155,7 +164,6 @@ export const messages = $root.messages = (() => {
                 return "Payload: buffer expected";
             return null;
         };
-
         /**
          * Creates an AutopilotMessage message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
@@ -175,7 +183,6 @@ export const messages = $root.messages = (() => {
                     message.Payload = object.Payload;
             return message;
         };
-
         /**
          * Creates a plain object from an AutopilotMessage message. Also converts values to other types if specified.
          * @function toObject
@@ -201,7 +208,6 @@ export const messages = $root.messages = (() => {
                 object.Payload = options.bytes === String ? $util.base64.encode(message.Payload, 0, message.Payload.length) : options.bytes === Array ? Array.prototype.slice.call(message.Payload) : message.Payload;
             return object;
         };
-
         /**
          * Converts this AutopilotMessage to JSON.
          * @function toJSON
@@ -212,12 +218,9 @@ export const messages = $root.messages = (() => {
         AutopilotMessage.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
-
         return AutopilotMessage;
     })();
-
-    messages.AutopilotMessageList = (function() {
-
+    messages.AutopilotMessageList = (function () {
         /**
          * Properties of an AutopilotMessageList.
          * @memberof messages
@@ -225,7 +228,6 @@ export const messages = $root.messages = (() => {
          * @property {messages.IDateTimeOffsetSurrogate} GeneratedTime AutopilotMessageList GeneratedTime
          * @property {Array.<messages.IAutopilotMessage>|null} [Messages] AutopilotMessageList Messages
          */
-
         /**
          * Constructs a new AutopilotMessageList.
          * @memberof messages
@@ -241,7 +243,6 @@ export const messages = $root.messages = (() => {
                     if (properties[keys[i]] != null)
                         this[keys[i]] = properties[keys[i]];
         }
-
         /**
          * AutopilotMessageList GeneratedTime.
          * @member {messages.IDateTimeOffsetSurrogate} GeneratedTime
@@ -249,7 +250,6 @@ export const messages = $root.messages = (() => {
          * @instance
          */
         AutopilotMessageList.prototype.GeneratedTime = null;
-
         /**
          * AutopilotMessageList Messages.
          * @member {Array.<messages.IAutopilotMessage>} Messages
@@ -257,7 +257,6 @@ export const messages = $root.messages = (() => {
          * @instance
          */
         AutopilotMessageList.prototype.Messages = $util.emptyArray;
-
         /**
          * Creates a new AutopilotMessageList instance using the specified properties.
          * @function create
@@ -269,7 +268,6 @@ export const messages = $root.messages = (() => {
         AutopilotMessageList.create = function create(properties) {
             return new AutopilotMessageList(properties);
         };
-
         /**
          * Encodes the specified AutopilotMessageList message. Does not implicitly {@link messages.AutopilotMessageList.verify|verify} messages.
          * @function encode
@@ -282,13 +280,12 @@ export const messages = $root.messages = (() => {
         AutopilotMessageList.encode = function encode(message, writer) {
             if (!writer)
                 writer = $Writer.create();
-            $root.messages.DateTimeOffsetSurrogate.encode(message.GeneratedTime, writer.uint32(/* id 1, wireType 2 =*/10).fork()).ldelim();
+            $root.messages.DateTimeOffsetSurrogate.encode(message.GeneratedTime, writer.uint32(/* id 1, wireType 2 =*/ 10).fork()).ldelim();
             if (message.Messages != null && message.Messages.length)
                 for (let i = 0; i < message.Messages.length; ++i)
-                    $root.messages.AutopilotMessage.encode(message.Messages[i], writer.uint32(/* id 2, wireType 2 =*/18).fork()).ldelim();
+                    $root.messages.AutopilotMessage.encode(message.Messages[i], writer.uint32(/* id 2, wireType 2 =*/ 18).fork()).ldelim();
             return writer;
         };
-
         /**
          * Encodes the specified AutopilotMessageList message, length delimited. Does not implicitly {@link messages.AutopilotMessageList.verify|verify} messages.
          * @function encodeDelimited
@@ -301,7 +298,6 @@ export const messages = $root.messages = (() => {
         AutopilotMessageList.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
-
         /**
          * Decodes an AutopilotMessageList message from the specified reader or buffer.
          * @function decode
@@ -320,24 +316,23 @@ export const messages = $root.messages = (() => {
             while (reader.pos < end) {
                 let tag = reader.uint32();
                 switch (tag >>> 3) {
-                case 1:
-                    message.GeneratedTime = $root.messages.DateTimeOffsetSurrogate.decode(reader, reader.uint32());
-                    break;
-                case 2:
-                    if (!(message.Messages && message.Messages.length))
-                        message.Messages = [];
-                    message.Messages.push($root.messages.AutopilotMessage.decode(reader, reader.uint32()));
-                    break;
-                default:
-                    reader.skipType(tag & 7);
-                    break;
+                    case 1:
+                        message.GeneratedTime = $root.messages.DateTimeOffsetSurrogate.decode(reader, reader.uint32());
+                        break;
+                    case 2:
+                        if (!(message.Messages && message.Messages.length))
+                            message.Messages = [];
+                        message.Messages.push($root.messages.AutopilotMessage.decode(reader, reader.uint32()));
+                        break;
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
                 }
             }
             if (!message.hasOwnProperty("GeneratedTime"))
                 throw $util.ProtocolError("missing required 'GeneratedTime'", { instance: message });
             return message;
         };
-
         /**
          * Decodes an AutopilotMessageList message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
@@ -353,7 +348,6 @@ export const messages = $root.messages = (() => {
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
-
         /**
          * Verifies an AutopilotMessageList message.
          * @function verify
@@ -381,7 +375,6 @@ export const messages = $root.messages = (() => {
             }
             return null;
         };
-
         /**
          * Creates an AutopilotMessageList message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
@@ -411,7 +404,6 @@ export const messages = $root.messages = (() => {
             }
             return message;
         };
-
         /**
          * Creates a plain object from an AutopilotMessageList message. Also converts values to other types if specified.
          * @function toObject
@@ -438,7 +430,6 @@ export const messages = $root.messages = (() => {
             }
             return object;
         };
-
         /**
          * Converts this AutopilotMessageList to JSON.
          * @function toJSON
@@ -449,19 +440,15 @@ export const messages = $root.messages = (() => {
         AutopilotMessageList.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
-
         return AutopilotMessageList;
     })();
-
-    messages.DateTimeOffsetSurrogate = (function() {
-
+    messages.DateTimeOffsetSurrogate = (function () {
         /**
          * Properties of a DateTimeOffsetSurrogate.
          * @memberof messages
          * @interface IDateTimeOffsetSurrogate
          * @property {string|null} [DateTimeString] DateTimeOffsetSurrogate DateTimeString
          */
-
         /**
          * Constructs a new DateTimeOffsetSurrogate.
          * @memberof messages
@@ -476,7 +463,6 @@ export const messages = $root.messages = (() => {
                     if (properties[keys[i]] != null)
                         this[keys[i]] = properties[keys[i]];
         }
-
         /**
          * DateTimeOffsetSurrogate DateTimeString.
          * @member {string} DateTimeString
@@ -484,7 +470,6 @@ export const messages = $root.messages = (() => {
          * @instance
          */
         DateTimeOffsetSurrogate.prototype.DateTimeString = "";
-
         /**
          * Creates a new DateTimeOffsetSurrogate instance using the specified properties.
          * @function create
@@ -496,7 +481,6 @@ export const messages = $root.messages = (() => {
         DateTimeOffsetSurrogate.create = function create(properties) {
             return new DateTimeOffsetSurrogate(properties);
         };
-
         /**
          * Encodes the specified DateTimeOffsetSurrogate message. Does not implicitly {@link messages.DateTimeOffsetSurrogate.verify|verify} messages.
          * @function encode
@@ -510,10 +494,9 @@ export const messages = $root.messages = (() => {
             if (!writer)
                 writer = $Writer.create();
             if (message.DateTimeString != null && message.hasOwnProperty("DateTimeString"))
-                writer.uint32(/* id 1, wireType 2 =*/10).string(message.DateTimeString);
+                writer.uint32(/* id 1, wireType 2 =*/ 10).string(message.DateTimeString);
             return writer;
         };
-
         /**
          * Encodes the specified DateTimeOffsetSurrogate message, length delimited. Does not implicitly {@link messages.DateTimeOffsetSurrogate.verify|verify} messages.
          * @function encodeDelimited
@@ -526,7 +509,6 @@ export const messages = $root.messages = (() => {
         DateTimeOffsetSurrogate.encodeDelimited = function encodeDelimited(message, writer) {
             return this.encode(message, writer).ldelim();
         };
-
         /**
          * Decodes a DateTimeOffsetSurrogate message from the specified reader or buffer.
          * @function decode
@@ -545,17 +527,16 @@ export const messages = $root.messages = (() => {
             while (reader.pos < end) {
                 let tag = reader.uint32();
                 switch (tag >>> 3) {
-                case 1:
-                    message.DateTimeString = reader.string();
-                    break;
-                default:
-                    reader.skipType(tag & 7);
-                    break;
+                    case 1:
+                        message.DateTimeString = reader.string();
+                        break;
+                    default:
+                        reader.skipType(tag & 7);
+                        break;
                 }
             }
             return message;
         };
-
         /**
          * Decodes a DateTimeOffsetSurrogate message from the specified reader or buffer, length delimited.
          * @function decodeDelimited
@@ -571,7 +552,6 @@ export const messages = $root.messages = (() => {
                 reader = new $Reader(reader);
             return this.decode(reader, reader.uint32());
         };
-
         /**
          * Verifies a DateTimeOffsetSurrogate message.
          * @function verify
@@ -588,7 +568,6 @@ export const messages = $root.messages = (() => {
                     return "DateTimeString: string expected";
             return null;
         };
-
         /**
          * Creates a DateTimeOffsetSurrogate message from a plain object. Also converts values to their respective internal types.
          * @function fromObject
@@ -605,7 +584,6 @@ export const messages = $root.messages = (() => {
                 message.DateTimeString = String(object.DateTimeString);
             return message;
         };
-
         /**
          * Creates a plain object from a DateTimeOffsetSurrogate message. Also converts values to other types if specified.
          * @function toObject
@@ -625,7 +603,6 @@ export const messages = $root.messages = (() => {
                 object.DateTimeString = message.DateTimeString;
             return object;
         };
-
         /**
          * Converts this DateTimeOffsetSurrogate to JSON.
          * @function toJSON
@@ -636,11 +613,7 @@ export const messages = $root.messages = (() => {
         DateTimeOffsetSurrogate.prototype.toJSON = function toJSON() {
             return this.constructor.toObject(this, $protobuf.util.toJSONOptions);
         };
-
         return DateTimeOffsetSurrogate;
     })();
-
     return messages;
 })();
-
-export { $root as default };
