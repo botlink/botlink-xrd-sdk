@@ -105,18 +105,19 @@ const authenticate = async relay => {
   });
 
   xrdSocket.connect(() => {
+
+    server.on("error", error => {
+      console.error(`UDP socket error: {error}`);
+      xrdSocket.close();
+      server.close();
+    });
+
     server.bind(bindPort, bindAddr, () => {
       console.log(`Listening on UDP ${bindAddr}:${bindPort}. Sending to ${gcsAddr}:${writePort}`);
 
       server.on("message", (message, rinfo) => {
         console.log("From GCS:", Buffer.from(message).toString("hex"));
         xrdSocket.write(message);
-      });
-
-      server.on("error", error => {
-        console.error(`UDP socket error: {error}`);
-        xrdSocket.close();
-        server.close();
       });
     });
   });

@@ -107,6 +107,12 @@ const authenticate = async relay => {
       server.send(message, gcsPort, gcsAddr);
     });
 
+    server.on("error", error => {
+      console.error(error);
+      xrdSocket.close();
+      server.close();
+    });
+
     xrdSocket.connect(() => {
       server.bind(port, bindAddr, () => {
         console.log(`Listening on UDP ${bindAddr}:${port}, writing to UDP ${gcsAddr}:${gcsPort}`);
@@ -114,12 +120,6 @@ const authenticate = async relay => {
         server.on("message", (message, rinfo) => {
           console.log("From GCS:", Buffer.from(message).toString("hex"));
           xrdSocket.write(message);
-        });
-
-        server.on("error", error => {
-          console.error(error);
-          xrdSocket.close();
-          server.close();
         });
       });
     });
