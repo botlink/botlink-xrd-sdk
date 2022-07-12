@@ -70,6 +70,12 @@ const authenticate = async relay => {
   return { credentials, selectedXrd };
 };
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 (async () => {
   const relay = {
     xrd: {
@@ -83,7 +89,7 @@ const authenticate = async relay => {
 
   server = udp.createSocket("udp4");
 
-  const bindPort = process.env.PORT || 14650;
+  const configuredPort = process.env.PORT || 14650;
   const bindAddr = process.env.BINDADDR || '127.0.0.1';
   const writePort = process.env.WRITEPORT || 14550;
   const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
@@ -104,22 +110,61 @@ const authenticate = async relay => {
     server.send(message, writePort, gcsAddr);
   });
 
-  xrdSocket.connect(() => {
+  xrdSocket.connect( async () => {
+    let connected = false
+    let connecting = false
+    let bindPort = configuredPort
 
     server.on("error", error => {
-      console.error(`UDP socket error: {error}`);
-      xrdSocket.close();
-      server.close();
+      console.error(`UDP socket error: ${error}`);
+      if ( error.code === "EADDRINUSE" ) {
+        connecting = false
+        // try next port if in use; wrap at max
+        bindPort = bindPort + 1
+        if (bindPort < 1024 || bindPort > 65535) {
+            bindPort = 1024
+        }
+        console.log(`inuse, bumping to ${bindPort}`)
+        if ( bindPort === configuredPort ) {
+          // give up
+          connected = true
+          xrdSocket.close()
+          console.error("UDP socket error: EADDRINUSE; could not find available port!");
+        }
+      }
+      else {
+        console.error(`UDP socket error: ${error}`);
+        xrdSocket.close();
+        server.close();
+      }
     });
 
-    server.bind(bindPort, bindAddr, () => {
-      console.log(`Listening on UDP ${bindAddr}:${bindPort}. Sending to ${gcsAddr}:${writePort}`);
+    // try all ports till binding is possible
+    while ( connected === false ) {
+      if ( connecting === false ) {
+        console.log(`server: ${Object.keys(server)}`)
+        connecting = true
+        console.log(`trying ${bindAddr}:${bindPort}`)
+        try {
+          server.bind(bindPort, bindAddr, () => {
+            console.log(`Listening on UDP ${bindAddr}:${bindPort}. Sending to ${gcsAddr}:${writePort}`);
 
-      server.on("message", (message, rinfo) => {
-        console.log("From GCS:", Buffer.from(message).toString("hex"));
-        xrdSocket.write(message);
-      });
-    });
+            server.on("message", (message, rinfo) => {
+              connected = true
+              console.log("From GCS:", Buffer.from(message).toString("hex"));
+              xrdSocket.write(message);
+            });
+          });
+        } catch (error) {
+          if ( error.code != "ERR_SOCKET_ALREADY_BOUND" ) {
+            console.log(`UDP bind exception : "${error}"`)
+          }
+        }
+      }
+      else {
+        await sleep(5)
+      }
+    }
   });
 })().catch(error => {
   console.error("[ERROR] ", error);
