@@ -21,53 +21,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 require("dotenv").config();
 const net = require("net");
-const fs = require("fs");
 const udp = require("dgram");
-const { auth, XRDApi, XRDSocket } = require("botlink-xrd-sdk");
-const { C3, API } = require("botlink-xrd-sdk/dist/src/urls");
+const { XRDSocket, BotlinkApi, XrdConnection, XrdLogger } = require('botlink-xrd-sdk')
 
-var client;
 var server;
 
-console.log(`C3 URL - ${C3}`);
-console.log(`API URL - ${API}`);
-
-const authenticate = async relay => {
-  let credentials;
-
+const authenticate = async xrd => {
+  let botlinkApi = new BotlinkApi()
   try {
-    credentials = await auth(relay.xrd.email, relay.xrd.password);
+    await botlinkApi.login({'username': xrd.email, 'password': xrd.password})
   } catch (error) {
     throw new Error("Unable to authenticate with Botlink services");
     return;
   }
 
   console.log(
-    "[INFO] Successfully authenticated with ",
-    API,
-    " as ",
-    relay.xrd.email
+    "[INFO] Successfully authenticated as ",
+    xrd.email
   );
-
-  const api = new XRDApi(credentials);
 
   let xrds;
 
   try {
-    xrds = await api.list();
+    xrds = await botlinkApi.listXrds();
   } catch (error) {
     throw new Error("Unable to list XRDs");
   }
 
-  let selectedXrd = xrds.find(xrd => {
-    return xrd.hardwareId === relay.xrd.hardwareId;
+  let selectedXrd = xrds.find(thisXrd => {
+    return thisXrd.hardwareId === xrd.hardwareId;
   });
 
   if (!selectedXrd) {
     throw new Error("Unable to find the XRD specified");
   }
 
-  return { credentials, selectedXrd };
+  return { botlinkApi, selectedXrd };
 };
 
 function sleep(ms) {
@@ -77,15 +66,13 @@ function sleep(ms) {
 }
 
 (async () => {
-  const relay = {
-    xrd: {
-      hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
-      email: process.env.RELAY_XRD_EMAIL,
-      password: process.env.RELAY_XRD_PASSWORD
-    }
+  const xrd = {
+    hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
+    email: process.env.RELAY_XRD_EMAIL,
+    password: process.env.RELAY_XRD_PASSWORD
   };
 
-  const { credentials, selectedXrd: xrd } = await authenticate(relay);
+  const { botlinkApi: api, selectedXrd } = await authenticate(xrd);
 
   server = udp.createSocket("udp4");
 
@@ -94,9 +81,16 @@ function sleep(ms) {
   const writePort = process.env.WRITEPORT || 14550;
   const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
 
+  const refreshToken = await api.getRefreshToken()
+  const accessToken = await api.getAuthToken()
+
   const xrdSocket = new XRDSocket({
-    xrd,
-    credentials
+    xrd: selectedXrd,
+    credentials: {
+        token: accessToken,
+        refresh: refreshToken,
+        user: { id: -1 }
+    }
   });
 
   xrdSocket.on("error", error => {

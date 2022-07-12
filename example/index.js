@@ -21,18 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 require('dotenv').config()
 const net = require('net')
-const fs = require('fs')
-const tls = require('tls')
-const { auth, XRDApi, XRDSocket } = require('botlink-xrd-sdk')
-const { C3, API } = require('botlink-xrd-sdk/dist/src/urls')
+const { XRDSocket, BotlinkApi, XrdConnection, XrdLogger } = require('botlink-xrd-sdk')
 const { pipeline } = require('stream')
 
 var currentSocket;
-var client;
 var server;
-
-console.log(`C3 URL - ${C3}`)
-console.log(`API URL - ${API}`)
 
 const destroy = () => {
   if (currentSocket) {
@@ -41,49 +34,41 @@ const destroy = () => {
     currentSocket.end()
     currentSocket = null
   }
-
-  if (client) {
-    client.removeAllListeners()
-    client.close()
-    client = null
-  }
 }
 
-const handleSocket = async (relay, socket) => {
+const handleSocket = async (relay, tcpSocket) => {
   if (currentSocket) {
     console.error('[REJECT] There is already a connection active from ', currentSocket.remoteAddress)
     socket.end()
     return
   }
 
-  console.log('[ACCEPT] Connection from ', socket.remoteAddress)
+  console.log('[ACCEPT] Connection from ', tcpSocket.remoteAddress)
 
-  currentSocket = socket
+  currentSocket = tcpSocket
 
-  console.log('[INFO] Authenticating with ', API, ' as ', relay.xrd.email)
+  console.log('[INFO] Authenticating as ', relay.xrd.username)
 
   currentSocket.on('close', () => {
     destroy()
   })
 
-  let credentials;
+  let botlinkApi = new BotlinkApi()
 
   try {
-    credentials = await auth(relay.xrd.email, relay.xrd.password)
+    await botlinkApi.login({'username': relay.xrd.username, 'password': relay.xrd.password})
   } catch (error) {
     console.error('Unable to authenticate with botlink services', error)
     destroy()
     return
   }
 
-  console.log('[INFO] Successfully authenticated with ', API, ' as ', relay.xrd.email)
-
-  const api = new XRDApi(credentials)
+  console.log('[INFO] Successfully authenticated with as ', relay.xrd.username)
 
   let xrds
 
   try {
-    xrds = await api.list()
+    xrds = await botlinkApi.listXrds()
   } catch (error) {
     console.error('Unable to list XRDs', error)
     destroy()
@@ -102,9 +87,16 @@ const handleSocket = async (relay, socket) => {
 
   console.log('[INFO] Connecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
 
+  const refreshToken = await botlinkApi.getRefreshToken()
+  const accessToken = await botlinkApi.getAuthToken()
+
   const xrdSocket = new XRDSocket({
     xrd: selectedXrd,
-    credentials: credentials
+    credentials: { 
+        token: accessToken,
+        refresh: refreshToken,
+        user: { id: -1 }
+    }
   })
 
   xrdSocket.on('disconnect', () => {
@@ -140,7 +132,7 @@ const bindAddr = process.env.BINDADDR || '127.0.0.1';
   const relay = {
     xrd: {
       hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
-      email: process.env.RELAY_XRD_EMAIL,
+      username: process.env.RELAY_XRD_EMAIL,
       password: process.env.RELAY_XRD_PASSWORD
     }
   }

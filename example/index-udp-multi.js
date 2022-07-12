@@ -21,62 +21,43 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 require("dotenv").config();
 const net = require("net");
-const fs = require("fs");
 const udp = require("dgram");
-const { auth, XRDApi, XRDSocket } = require("botlink-xrd-sdk");
-const { C3, API } = require("botlink-xrd-sdk/dist/src/urls");
+const { XRDSocket, BotlinkApi, XrdConnection, XrdLogger } = require('botlink-xrd-sdk')
 
-var client;
 var server;
 
-console.log(`C3 URL - ${C3}`);
-console.log(`API URL - ${API}`);
-
-const authenticate = async relay => {
-  let credentials;
-
+const authenticate = async xrd => {
+  let botlinkApi = new BotlinkApi()
   try {
-    credentials = await auth(relay.xrd.email, relay.xrd.password);
+    await botlinkApi.login({'username': xrd.email, 'password': xrd.password})
   } catch (error) {
     throw new Error("Unable to authenticate with Botlink services");
     return;
   }
 
   console.log(
-    "[INFO] Successfully authenticated with ",
-    API,
-    " as ",
-    relay.xrd.email
+    "[INFO] Successfully authenticated as ",
+    xrd.email
   );
-
-  const api = new XRDApi(credentials);
 
   let xrds;
 
   try {
-    xrds = await api.list();
+    xrds = await botlinkApi.listXrds();
   } catch (error) {
     throw new Error("Unable to list XRDs");
   }
 
-  if (!xrds) {
-    throw new Error(
-      "Unable to find any XRDs registered to this account specified"
-    );
-  }
-
-  return { credentials, xrds };
+  return { botlinkApi, xrds };
 };
 
 (async () => {
-  const relay = {
-    xrd: {
-      email: process.env.RELAY_XRD_EMAIL,
-      password: process.env.RELAY_XRD_PASSWORD
-    }
+  const creds = {
+    email: process.env.RELAY_XRD_EMAIL,
+    password: process.env.RELAY_XRD_PASSWORD
   };
 
-  const { credentials, xrds } = await authenticate(relay);
+  const { botlinkApi: api, xrds } = await authenticate(creds);
 
   let portOffset = 0;
   const basePort = process.env.PORT || 14650;
@@ -84,16 +65,24 @@ const authenticate = async relay => {
   const gcsPort = process.env.WRITEPORT || 14550;
   const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
 
-  for (let xrd of xrds) {
-    const server = udp.createSocket("udp4");
+  const refreshToken = await api.getRefreshToken()
+  const accessToken = await api.getAuthToken()
 
+  for (let i=0; i<xrds.length; i += 1) {
+    const server = udp.createSocket("udp4");
     const port = basePort + portOffset;
+
+    const xrd = xrds[i]
 
     portOffset += 1;
 
     const xrdSocket = new XRDSocket({
       xrd,
-      credentials
+      credentials: {
+          token: accessToken,
+          refresh: refreshToken,
+          user: { id: -1 }
+      }
     });
 
     xrdSocket.on("error", error => {
@@ -103,7 +92,7 @@ const authenticate = async relay => {
     });
 
     xrdSocket.on("data", message => {
-      console.log("From XRD:", Buffer.from(message).toString("hex"));
+      console.log(`From XRD${i}: ${Buffer.from(message).toString("hex")}`);
       server.send(message, gcsPort, gcsAddr);
     });
 
