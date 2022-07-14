@@ -29,9 +29,17 @@ This example uses dotenv, so you can place these in a .env file in this director
 ## Running
 
 ### To run the TCP example (index.js)
+Uses NextGen datalink (WebRTC)
 
 ```bash
 yarn start
+```
+
+### To run the TCP example for Classic datalink (index-classic.js)
+Uses Classic datalink (WebSockets)
+
+```bash
+yarn start-classic
 ```
 
 ### To run the UDP example (index-udp.js)
