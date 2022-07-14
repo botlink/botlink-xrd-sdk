@@ -43,6 +43,7 @@ yarn start-classic
 ```
 
 ### To run the UDP example (index-udp.js)
+Uses NextGen datalink (WebRTC)
 
 Should auto connect to most GCS software on localhost.
 If `WRITEADDR` is an external system, be sure to set `BINDADDR` to an address on the GCS's network.

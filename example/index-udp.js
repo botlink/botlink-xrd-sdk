@@ -20,9 +20,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 require("dotenv").config();
-const net = require("net");
 const udp = require("dgram");
-const { XRDSocket, BotlinkApi, XrdConnection, XrdLogger } = require('botlink-xrd-sdk')
+const { BotlinkApi, XrdConnection, XrdConnectionEvents, XrdConnectionStatus } = require('botlink-xrd-sdk')
 
 var server;
 
@@ -81,89 +80,89 @@ function sleep(ms) {
   const writePort = process.env.WRITEPORT || 14550;
   const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
 
-  const refreshToken = await api.getRefreshToken()
-  const accessToken = await api.getAuthToken()
+  xrdConnection = new XrdConnection(api, selectedXrd)
 
-  const xrdSocket = new XRDSocket({
-    xrd: selectedXrd,
-    credentials: {
-        token: accessToken,
-        refresh: refreshToken,
-        user: { id: -1 }
-    }
-  });
+  let xrdName = selectedXrd.name || selectedXrd.emei
 
-  xrdSocket.on("error", error => {
-    console.error(error);
-    xrdSocket.close();
-    server.close();
-  });
+  xrdConnection.on(XrdConnectionEvents.ConnectionStatus, async (status) => {
+    if (status === XrdConnectionStatus.Connected) {
+      console.log(`[INFO] Connected to XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+      let connected = false
+      let connecting = false
+      let bindPort = configuredPort
 
-  xrdSocket.on("data", message => {
-    console.log("From XRD:", Buffer.from(message).toString("hex"));
-    server.send(message, writePort, gcsAddr);
-  });
-
-  xrdSocket.connect( async () => {
-    let connected = false
-    let connecting = false
-    let bindPort = configuredPort
-
-    server.on("error", error => {
-      console.error(`UDP socket error: ${error}`);
-      if ( error.code === "EADDRINUSE" ) {
-        connecting = false
-        // try next port if in use; wrap at max
-        bindPort = bindPort + 1
-        if (bindPort < 1024 || bindPort > 65535) {
-            bindPort = 1024
-        }
-        console.log(`inuse, bumping to ${bindPort}`)
-        if ( bindPort === configuredPort ) {
-          // give up
-          connected = true
-          xrdSocket.close()
-          console.error("UDP socket error: EADDRINUSE; could not find available port!");
-        }
-      }
-      else {
+      server.on("error", error => {
         console.error(`UDP socket error: ${error}`);
-        xrdSocket.close();
-        server.close();
-      }
-    });
-
-    // try all ports till binding is possible
-    while ( connected === false ) {
-      if ( connecting === false ) {
-        console.log(`server: ${Object.keys(server)}`)
-        connecting = true
-        console.log(`trying ${bindAddr}:${bindPort}`)
-        try {
-          server.bind(bindPort, bindAddr, () => {
-            console.log(`Listening on UDP ${bindAddr}:${bindPort}. Sending to ${gcsAddr}:${writePort}`);
-
-            server.on("message", (message, rinfo) => {
-              connected = true
-              console.log("From GCS:", Buffer.from(message).toString("hex"));
-              xrdSocket.write(message);
-            });
-          });
-        } catch (error) {
-          if ( error.code != "ERR_SOCKET_ALREADY_BOUND" ) {
-            console.log(`UDP bind exception : "${error}"`)
+        if ( error.code === "EADDRINUSE" ) {
+          connecting = false
+          // try next port if in use; wrap at max
+          bindPort = bindPort + 1
+          if (bindPort < 1024 || bindPort > 65535) {
+              bindPort = 1024
+          }
+          console.log(`inuse, bumping to ${bindPort}`)
+          if ( bindPort === configuredPort ) {
+            // give up
+            connected = true
+            console.error("UDP socket error: EADDRINUSE; could not find available port!");
           }
         }
+        else {
+          console.error(`UDP socket error: ${error}`);
+          server.close();
+        }
+      });
+
+      // try all ports till binding is possible
+      while ( connected === false ) {
+        if ( connecting === false ) {
+          connecting = true
+          console.log(`trying ${bindAddr}:${bindPort}`)
+          try {
+            server.bind(bindPort, bindAddr, () => {
+              console.log(`Listening on UDP ${bindAddr}:${bindPort}. Sending to ${gcsAddr}:${writePort}`);
+
+              server.on("message", (message, rinfo) => {
+                connected = true
+                console.log("From GCS:", Buffer.from(message).toString("hex"));
+                xrdConnection.sendAutopilotMessage(message);
+              });
+
+              xrdConnection.on(XrdConnectionEvents.AutopilotMessage, xrdData => {
+                console.log("From XRD:", Buffer.from(xrdData).toString("hex"));
+                try{
+                  server.send(xrdData, writePort, gcsAddr);
+                } catch(error) {
+                  console.log(`error on autopilot message ${error}`)
+                }
+              })
+            });
+          } catch (error) {
+            if ( error.code != "ERR_SOCKET_ALREADY_BOUND" ) {
+              console.log(`UDP bind exception : "${error}"`)
+            }
+          }
+        }
+        else {
+          await sleep(5)
+        }
       }
-      else {
-        await sleep(5)
-      }
+
+    } else if (status === XrdConnectionStatus.Connecting) {
+      console.log(`[INFO] Connecting to XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+    } else if (status === XrdConnectionStatus.Disconnected) {
+      console.log(`[INFO] Disconnected from XRD ${xrdName}, (${selectedXrd.hardwareId})`)
     }
-  });
+  })
+
+  xrdConnection.openConnection(60)
+
+
 })().catch(error => {
   console.error("[ERROR] ", error);
 
   if (server) {
+    xrdConnection.closeConnection()
     server.close();
   }
 });
