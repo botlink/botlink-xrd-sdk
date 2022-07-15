@@ -1,8 +1,8 @@
 # Botlink XRD SDK Example App
 
 These apps are a complete working example of using the Botlink XRD SDK
-to connect your drone to QGroundControl. There are two examples, one showing TCP
-connectivity, and the other showing UDP connectivity.
+to connect your drone to QGroundControl. There are four examples, two showing TCP
+connectivity, and the other two showing UDP connectivity.
 
 ## Installation
 
