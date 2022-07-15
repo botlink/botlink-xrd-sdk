@@ -57,7 +57,9 @@ Uses NextGen datalink (WebRTC)
 
 This example assumes each drone has a unique MAVLink system ID and all drones are operated by the same GCS
 `WRITEADDR` and `WRITEPORT` are used to connect to the GCS. See above.
-Each drone will have a unique listen port starting at 14650. PORT is ignored
+If PORT is not 0, each drone will have a consecutive listen port starting at PORT
+
+If RELAY_XRD_HARDWARE_ID is defined, treat as comma separated list of XRDs to connect to; else try all XRDs on the account
 
 If `WRITEADDR` is an external system, be sure to set `BINDADDR` to an address on the GCS's network.
 
