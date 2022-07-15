@@ -16,15 +16,15 @@ Running the example requires configuring a few environment variables.
 
 This example uses dotenv, so you can place these in a .env file in this directory.
 
-| Environment Variable  | Required? | Description                                                                       |
-| --------------------- | --------- | --------------------------------------------------------------------------------- |
-| RELAY_XRD_EMAIL       | **yes**   | The email address of the owner of the XRD                                         |
-| RELAY_XRD_PASSWORD    | **yes**   | The password of the owner of the XRD                                              |
-| RELAY_XRD_HARDWARE_ID | **yes**   | The hardware ID of the XRD (with dashes)                                          |
-| PORT                  | no        | The port used to listen for GCS Connections. Defaults to tcp 5760 or udp 14650    |
-| BINDADDR              | no        | The IP address of the GCS. Defaults to 127.0.0.1. Use 0.0.0.0 for "all" addresses |
-| WRITEPORT             | no        | The port used to send messages to GCS. UDP Only. Defaults to 14550                |
-| WRITEADDR             | no        | The IP address of the GCS. UDP Only. Defaults to 127.0.0.1                        |
+| Environment Variable  | Required? | Description                                                                         |
+| --------------------- | --------- | ------------------------------------------------------------------------------------|
+| RELAY_XRD_EMAIL       | **yes**   | The email address of the owner of the XRD                                           |
+| RELAY_XRD_PASSWORD    | **yes**   | The password of the owner of the XRD                                                |
+| RELAY_XRD_HARDWARE_ID | **yes**   | The hardware ID of the XRD (with dashes)                                            |
+| PORT                  | no        | The port used to listen for GCS Connections. Defaults to tcp 5760 or UDP 0 (random) |
+| BINDADDR              | no        | The IP address to listen on. Defaults to 127.0.0.1. Use 0.0.0.0 for "all" addresses |
+| WRITEPORT             | no        | The port used to send messages to GCS. UDP Only. Defaults to 14550                  |
+| WRITEADDR             | no        | The IP address of the GCS. UDP Only. Defaults to 127.0.0.1                          |
 
 ## Running
 
@@ -53,6 +53,7 @@ yarn start-udp
 ```
 
 ### To run the UDP example and connect to multiple XRDs (index-udp-multi.js)
+Uses NextGen datalink (WebRTC)
 
 This example assumes each drone has a unique MAVLink system ID and all drones are operated by the same GCS
 `WRITEADDR` and `WRITEPORT` are used to connect to the GCS. See above.
