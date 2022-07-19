@@ -74,7 +74,7 @@ const authenticate = async (user, xrdFilterList) => {
     let xrdName = xrd.name || xrd.emei
 
     xrdConnection.on(XrdConnectionEvents.ConnectionStatus, async (status) => {
-      console.log(`[INFO] Connected to XRD${i} ${xrdName}, (${xrd.hardwareId}) as NextGen`)
+      console.log(`[INFO] ${status} to XRD${i} ${xrdName}, (${xrd.hardwareId}) as NextGen`)
       if (status === XrdConnectionStatus.Connected) {
         server.on("error", error => {
           console.error(`[ERROR] XRD${i} ${error}`);
@@ -105,10 +105,6 @@ const authenticate = async (user, xrdFilterList) => {
         } catch (error) {
           console.log(`UDP bind exception : "${error}"`)
         }
-      } else if (status === XrdConnectionStatus.Connecting) {
-        console.log(`[INFO] Connecting to XRD${i} ${xrdName}, (${xrd.hardwareId})`)
-      } else if (status === XrdConnectionStatus.Disconnected) {
-        console.log(`[INFO] Disconnected from XRD${i} ${xrdName}, (${xrd.hardwareId})`)
       }
     });
 

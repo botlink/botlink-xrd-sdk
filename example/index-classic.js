@@ -65,7 +65,7 @@ const handleSocket = async (relay, tcpSocket) => {
     return
   }
 
-  console.log('[INFO] Successfully authenticated with as ', relay.xrd.username)
+  console.log('[INFO] Successfully authenticated as ', relay.xrd.username)
 
   let xrds
 
