@@ -19,6 +19,7 @@ public:
     Napi::Value getAuthToken(const Napi::CallbackInfo& info);
     Napi::Value registerXrd(const Napi::CallbackInfo& info);
     Napi::Value deregisterXrd(const Napi::CallbackInfo& info);
+    Napi::Value updateXrdName(const Napi::CallbackInfo& info);
 
     // Used by botlink::wrapper::XrdConnection, not exposed in
     // javascript. XrdConnection holds a Napi object reference to this

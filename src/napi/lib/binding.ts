@@ -270,6 +270,21 @@ export interface ApiBindings {
    * @returns boolean, true if successful
    */
   deregisterXrd(xrd: Xrd, timeoutSeconds?: number): Promise<boolean>
+  /**
+   * Updates the name associated with an already registered XRD.
+   *
+   * This method throws an exception if updating the name failed
+   *
+   * @param xrd The XRD for which to update the name
+   *
+   * @param newName The new name to give to the XRD
+   *
+   * @param timeoutSeconds How long to wait to update the XRD's name before
+   *                       timing out, uses default timeout if not specified.
+   *
+   * @returns boolean, true if successful
+   */
+  updateXrdName(xrd: Xrd, newName: string, timeoutSeconds?: number): Promise<boolean>
 }
 
 /**
