@@ -20,108 +20,119 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
 require("dotenv").config();
-const net = require("net");
-const fs = require("fs");
 const udp = require("dgram");
-const { auth, XRDApi, XRDSocket } = require("botlink-xrd-sdk");
-const { C3, API } = require("botlink-xrd-sdk/dist/src/urls");
+const { BotlinkApi, XrdConnection, XrdConnectionEvents, XrdConnectionStatus } = require('botlink-xrd-sdk')
 
-var client;
 var server;
 
-console.log(`C3 URL - ${C3}`);
-console.log(`API URL - ${API}`);
-
-const authenticate = async relay => {
-  let credentials;
-
+const authenticate = async xrd => {
+  let botlinkApi = new BotlinkApi()
   try {
-    credentials = await auth(relay.xrd.email, relay.xrd.password);
+    await botlinkApi.login({'username': xrd.email, 'password': xrd.password})
   } catch (error) {
     throw new Error("Unable to authenticate with Botlink services");
     return;
   }
 
   console.log(
-    "[INFO] Successfully authenticated with ",
-    API,
-    " as ",
-    relay.xrd.email
+    "[INFO] Successfully authenticated as ",
+    xrd.email
   );
-
-  const api = new XRDApi(credentials);
 
   let xrds;
 
   try {
-    xrds = await api.list();
+    xrds = await botlinkApi.listXrds();
   } catch (error) {
     throw new Error("Unable to list XRDs");
   }
 
-  let selectedXrd = xrds.find(xrd => {
-    return xrd.hardwareId === relay.xrd.hardwareId;
+  let selectedXrd = xrds.find(thisXrd => {
+    return thisXrd.hardwareId === xrd.hardwareId;
   });
 
   if (!selectedXrd) {
     throw new Error("Unable to find the XRD specified");
   }
 
-  return { credentials, selectedXrd };
+  return { botlinkApi, selectedXrd };
 };
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 (async () => {
-  const relay = {
-    xrd: {
-      hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
-      email: process.env.RELAY_XRD_EMAIL,
-      password: process.env.RELAY_XRD_PASSWORD
-    }
+  const xrd = {
+    hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
+    email: process.env.RELAY_XRD_EMAIL,
+    password: process.env.RELAY_XRD_PASSWORD
   };
 
-  const { credentials, selectedXrd: xrd } = await authenticate(relay);
+  const { botlinkApi: api, selectedXrd } = await authenticate(xrd);
 
   server = udp.createSocket("udp4");
 
-  const port = process.env.PORT || 8080;
-  const writePort = port + 1;
+  const configuredPort = process.env.PORT || 0;
+  const bindAddr = process.env.BINDADDR || '127.0.0.1';
+  const writePort = process.env.WRITEPORT || 14550;
+  const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
 
-  const xrdSocket = new XRDSocket({
-    xrd,
-    credentials
-  });
+  xrdConnection = new XrdConnection(api, selectedXrd)
 
-  xrdSocket.on("error", error => {
-    console.error(error);
-    xrdSocket.close();
-    server.close();
-  });
+  let xrdName = selectedXrd.name || selectedXrd.emei
 
-  xrdSocket.on("data", message => {
-    console.log("From XRD:", Buffer.from(message).toString("hex"));
-    server.send(message, writePort);
-  });
-
-  xrdSocket.connect(() => {
-    server.bind(port, () => {
-      console.log(`Listening on port ${port}`);
-
-      server.on("message", (message, rinfo) => {
-        console.log("From GCS:", Buffer.from(message).toString("hex"));
-        xrdSocket.write(message);
-      });
+  xrdConnection.on(XrdConnectionEvents.ConnectionStatus, async (status) => {
+    if (status === XrdConnectionStatus.Connected) {
+      console.log(`[INFO] Connected to XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+      let bindPort = configuredPort
 
       server.on("error", error => {
-        console.error(error);
-        xrdSocket.close();
+        console.error(`UDP socket error: ${error}`);
         server.close();
       });
-    });
-  });
+
+      try {
+        server.bind(bindPort, bindAddr, () => {
+          const connInfo = server.address()
+
+          console.log(`Listening on UDP ${connInfo.address}:${connInfo.port}. Sending to ${gcsAddr}:${writePort}`);
+
+          server.on("message", (message, rinfo) => {
+            connected = true
+            console.log("From GCS:", Buffer.from(message).toString("hex"));
+            xrdConnection.sendAutopilotMessage(message);
+          });
+
+          xrdConnection.on(XrdConnectionEvents.AutopilotMessage, xrdData => {
+            console.log("From XRD:", Buffer.from(xrdData).toString("hex"));
+            try{
+              server.send(xrdData, writePort, gcsAddr);
+            } catch(error) {
+              console.log(`error on autopilot message ${error}`)
+            }
+          })
+        });
+      } catch (error) {
+        console.log(`UDP bind exception : "${error}"`)
+      }
+    } else if (status === XrdConnectionStatus.Connecting) {
+      console.log(`[INFO] Connecting to XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+    } else if (status === XrdConnectionStatus.Disconnected) {
+      console.log(`[INFO] Disconnected from XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+    }
+  })
+
+  xrdConnection.openConnection(60)
+
+
 })().catch(error => {
   console.error("[ERROR] ", error);
 
   if (server) {
+    xrdConnection.closeConnection()
     server.close();
   }
 });

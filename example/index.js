@@ -21,72 +21,78 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 require('dotenv').config()
 const net = require('net')
-const fs = require('fs')
-const tls = require('tls')
-const { auth, XRDApi, XRDSocket } = require('botlink-xrd-sdk')
-const { C3, API } = require('botlink-xrd-sdk/dist/src/urls')
-const { pipeline } = require('stream')
+const { BotlinkApi, XrdConnection, XrdConnectionEvents, XrdConnectionStatus } = require('botlink-xrd-sdk')
 
-var currentSocket;
-var client;
 var server;
 
-console.log(`C3 URL - ${C3}`)
-console.log(`API URL - ${API}`)
+const handleSocket = async (tcpSocket, xrdConnection) => {
 
-const destroy = () => {
-  if (currentSocket) {
-    console.log('[DESTROY] Connection from ', currentSocket.remoteAddress)
-    currentSocket.removeAllListeners()
-    currentSocket.end()
-    currentSocket = null
+  const destroy = () => {
+    if (tcpSocket) {
+      console.log('[DESTROY] Connection from ', tcpSocket.remoteAddress)
+      tcpSocket.removeAllListeners()
+      tcpSocket.end()
+      tcpSocket = null
+    }
   }
 
-  if (client) {
-    client.removeAllListeners()
-    client.close()
-    client = null
-  }
-}
+  console.log('[ACCEPT] Connection from ', tcpSocket.remoteAddress)
 
-const handleSocket = async (relay, socket) => {
-  if (currentSocket) {
-    console.error('[REJECT] There is already a connection active from ', currentSocket.remoteAddress)
-    socket.end()
-    return
-  }
 
-  console.log('[ACCEPT] Connection from ', socket.remoteAddress)
-
-  currentSocket = socket
-
-  console.log('[INFO] Authenticating with ', API, ' as ', relay.xrd.email)
-
-  currentSocket.on('close', () => {
+  tcpSocket.on('close', () => {
     destroy()
+    return
   })
 
-  let credentials;
+  xrdConnection.on(XrdConnectionEvents.AutopilotMessage, xrdData => {
+    if ( !tcpSocket) {
+      return
+    }
+    try{
+      tcpSocket.write(xrdData)
+    } catch(error) {
+      console.log(`error on autopilot message ${error}`)
+    }
+  })
+
+  tcpSocket.on('data', gcsData => {
+    xrdConnection.sendAutopilotMessage(gcsData)
+  })
+
+}
+
+
+const port = process.env.PORT || 5760;
+const bindAddr = process.env.BINDADDR || '127.0.0.1';
+
+(async () => {
+  const relay = {
+    xrd: {
+      hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
+      username: process.env.RELAY_XRD_EMAIL,
+      password: process.env.RELAY_XRD_PASSWORD
+    }
+  }
+
+  console.log('[INFO] Authenticating as ', relay.xrd.username)
+  let botlinkApi = new BotlinkApi()
 
   try {
-    credentials = await auth(relay.xrd.email, relay.xrd.password)
+    await botlinkApi.login({'username': relay.xrd.username, 'password': relay.xrd.password})
   } catch (error) {
     console.error('Unable to authenticate with botlink services', error)
     destroy()
     return
   }
 
-  console.log('[INFO] Successfully authenticated with ', API, ' as ', relay.xrd.email)
-
-  const api = new XRDApi(credentials)
+  console.log('[INFO] Successfully authenticated with as ', relay.xrd.username)
 
   let xrds
 
   try {
-    xrds = await api.list()
+    xrds = await botlinkApi.listXrds()
   } catch (error) {
     console.error('Unable to list XRDs', error)
-    destroy()
     return
   }
 
@@ -96,56 +102,31 @@ const handleSocket = async (relay, socket) => {
 
   if (!selectedXrd) {
     console.error('Unable to find the XRD specified')
-    destroy()
     return
   }
 
-  console.log('[INFO] Connecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
+  let xrdName = selectedXrd.name || selectedXrd.emei
 
-  const xrdSocket = new XRDSocket({
-    xrd: selectedXrd,
-    credentials: credentials
-  })
+  xrdConnection = new XrdConnection(botlinkApi, selectedXrd)
 
-  xrdSocket.on('disconnect', () => {
-    console.log('[INFO] Reconnecting to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
-  })
-
-  xrdSocket.connect(() => {
-    pipeline(currentSocket, xrdSocket, (err) => {
-      if (err) {
-        console.error(err)
-      }
-
-      destroy()
-    })
-
-    pipeline(xrdSocket, currentSocket, (err) => {
-      if (err) {
-        console.error(err)
-      }
-
-      destroy()
-    })
-
-    console.log('[INFO] Connected to XRD ', selectedXrd.name || selectedXrd.emei, '(', selectedXrd.hardwareId, ')')
-  })
-}
-
-(async () => {
-  const relay = {
-    xrd: {
-      hardwareId: process.env.RELAY_XRD_HARDWARE_ID,
-      email: process.env.RELAY_XRD_EMAIL,
-      password: process.env.RELAY_XRD_PASSWORD
+  xrdConnection.on(XrdConnectionEvents.ConnectionStatus, (status) => {
+    if (status === XrdConnectionStatus.Connected) {
+      console.log(`[INFO] Connected to XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+    } else
+    if (status === XrdConnectionStatus.Connecting) {
+      console.log(`[INFO] Connecting to XRD ${xrdName}, (${selectedXrd.hardwareId})`)
+    } else if (status === XrdConnectionStatus.Disconnected) {
+      console.log(`[INFO] Disconnected from XRD ${xrdName}, (${selectedXrd.hardwareId})`)
     }
-  }
+  })
+  xrdConnection.openConnection(60)
 
   server = net.createServer(async (socket) => {
-    await handleSocket(relay, socket)
+    await handleSocket(socket, xrdConnection)
   })
 
-  server.listen(process.env.PORT || 5760)
+  server.listen(port, bindAddr)
+  console.log(`Listening on TCP ${bindAddr}:${port}.`);
 })().catch((error => {
   console.error('[ERROR] ', error)
 
