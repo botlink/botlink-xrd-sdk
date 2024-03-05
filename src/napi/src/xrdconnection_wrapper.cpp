@@ -572,10 +572,22 @@ bool XrdConnection::addVideoTrackToConn()
 Napi::Value XrdConnection::setVideoForwardPort(const Napi::CallbackInfo& info)
 {
     Napi::Env env = info.Env();
-    if (!(info.Length() == 1 && info[0].IsNumber())) {
-        Napi::TypeError::New(env, "Wrong number of arguments. "
-                             "Need one argument that is a number.")
+    if ( info.Length() < 1 || info.Length() > 2 ) {
+        Napi::TypeError::New(env, "Wrong number of arguments. 1 or 2 expected.")
             .ThrowAsJavaScriptException();
+    }
+    if (!info[0].IsNumber()) {
+        Napi::TypeError::New(env, "Port must be a number.")
+            .ThrowAsJavaScriptException();
+    }
+
+    if (info.Length() == 2){
+        if (!info[1].IsString()) {
+            Napi::TypeError::New(env, "IP must be a string.")
+                .ThrowAsJavaScriptException();
+        }else{
+            _videoForwarder.setAddr(std::string(info[1].As<Napi::String>()).c_str());
+        }
     }
 
     _videoForwarder.setPort(info[0].As<Napi::Number>().Int32Value());
