@@ -1,6 +1,6 @@
 {
   "name": "botlink-xrd-sdk",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Components for interacting with Botlink's XRD services",
   "main": "dist/src/index.js",
   "repository": "https://github.com/botlink/botlink-xrd-sdk",
@@ -36,7 +36,9 @@
     "install": "run-s setup-cxx-sdk install-bindings",
     "build": "rimraf dist/ && tsc",
     "rebuild-bindings": "env-cmd -f .sdkpath node-pre-gyp install --build-from-source",
-    "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none"
+    "build-typedoc": "rm -rf dist/ && rm -rf docs/ && typedoc --readme none",
+    "clean": "rm -rf build/ node_modules/ example/node_modules/ example/yarn.lock tmp/ .sdkpath",
+    "publish-bindings": "run-s install && node-pre-gyp package publish"
   },
   "binary": {
     "module_name": "botlink_xrd_sdk_bindings",
