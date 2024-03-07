@@ -66,6 +66,7 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
+<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-methods">Public Member Functions</a> &#124;
 <a href="#pub-static-attribs">Static Public Attributes</a> &#124;
 <a href="classbotlink_1_1Public_1_1BotlinkApi-members.html">List of all members</a>  </div>
@@ -79,8 +80,17 @@ $(function() {
 
 <p><code>#include &lt;<a class="el" href="api_8h_source.html">api.h</a>&gt;</code></p>
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
+Public Types</h2></td></tr>
+<tr class="memitem:a47709e47fa35e721a6e7bba6fdd4ee9d"><td class="memItemLeft" align="right" valign="top">typedef std::function&lt; void(const std::string &amp;auth, const std::string &amp;<a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#ab37e90c7c0a9a1ba3fbf66e2ce8d11f5">refresh</a>)&gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a47709e47fa35e721a6e7bba6fdd4ee9d">NewTokenCallback</a></td></tr>
+<tr class="memdesc:a47709e47fa35e721a6e7bba6fdd4ee9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Type of function called when new tokens are available.  <a href="classbotlink_1_1Public_1_1BotlinkApi.html#a47709e47fa35e721a6e7bba6fdd4ee9d">More...</a><br /></td></tr>
+<tr class="separator:a47709e47fa35e721a6e7bba6fdd4ee9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-methods"></a>
 Public Member Functions</h2></td></tr>
+<tr class="memitem:a722e5d5df47399b08ca4561a2bf5d41b"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a722e5d5df47399b08ca4561a2bf5d41b">setNewTokenCallback</a> (const <a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a47709e47fa35e721a6e7bba6fdd4ee9d">NewTokenCallback</a> &amp;callback)</td></tr>
+<tr class="memdesc:a722e5d5df47399b08ca4561a2bf5d41b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set a callback to be called when new tokens are available.  <a href="classbotlink_1_1Public_1_1BotlinkApi.html#a722e5d5df47399b08ca4561a2bf5d41b">More...</a><br /></td></tr>
+<tr class="separator:a722e5d5df47399b08ca4561a2bf5d41b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a1fc58b2660cee1cbd39da5453f34ef29"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a1fc58b2660cee1cbd39da5453f34ef29">login</a> (const std::string &amp;user, const std::string &amp;password, std::chrono::seconds timeout=defaultTimeout)</td></tr>
 <tr class="memdesc:a1fc58b2660cee1cbd39da5453f34ef29"><td class="mdescLeft">&#160;</td><td class="mdescRight">Logs in to a Botlink account using username and password.  <a href="classbotlink_1_1Public_1_1BotlinkApi.html#a1fc58b2660cee1cbd39da5453f34ef29">More...</a><br /></td></tr>
 <tr class="separator:a1fc58b2660cee1cbd39da5453f34ef29"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -99,12 +109,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a2f07fb3eba928cdf573a066b13c09643"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="structbotlink_1_1Public_1_1Xrd.html">Xrd</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a2f07fb3eba928cdf573a066b13c09643">listXrds</a> (std::chrono::seconds timeout=defaultTimeout)</td></tr>
 <tr class="memdesc:a2f07fb3eba928cdf573a066b13c09643"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gets the XRDs associated with the currently authenticated Botlink account.  <a href="classbotlink_1_1Public_1_1BotlinkApi.html#a2f07fb3eba928cdf573a066b13c09643">More...</a><br /></td></tr>
 <tr class="separator:a2f07fb3eba928cdf573a066b13c09643"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afc184cc4ebd23d0d75e81ff6aa10d937"><td class="memItemLeft" align="right" valign="top"><a id="afc184cc4ebd23d0d75e81ff6aa10d937"></a>
-std::vector&lt; <a class="el" href="structbotlink_1_1Public_1_1Xrd.html">Xrd</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>xrdsPresent</b> (std::chrono::seconds timeout=defaultTimeout)</td></tr>
-<tr class="separator:afc184cc4ebd23d0d75e81ff6aa10d937"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a39efc7ac8b2b979b34b5533cb154cc1a"><td class="memItemLeft" align="right" valign="top"><a id="a39efc7ac8b2b979b34b5533cb154cc1a"></a>
-std::string&#160;</td><td class="memItemRight" valign="bottom"><b>getXrdConfig</b> (const <a class="el" href="structbotlink_1_1Public_1_1Xrd.html">Xrd</a> &amp;xrd, std::chrono::seconds timeout=defaultTimeout)</td></tr>
-<tr class="separator:a39efc7ac8b2b979b34b5533cb154cc1a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a73e54b3c407cedb8f541b056b402824a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a73e54b3c407cedb8f541b056b402824a">registerXrd</a> (const std::string &amp;xrdId, std::chrono::seconds timeout=defaultTimeout)</td></tr>
 <tr class="memdesc:a73e54b3c407cedb8f541b056b402824a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Registers an XRD with the currently authenticated Botlink account.  <a href="classbotlink_1_1Public_1_1BotlinkApi.html#a73e54b3c407cedb8f541b056b402824a">More...</a><br /></td></tr>
 <tr class="separator:a73e54b3c407cedb8f541b056b402824a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -126,7 +130,31 @@ static constexpr std::chrono::seconds&#160;</td><td class="memItemRight" valign=
 <dl class="section note"><dt>Note</dt><dd>The class interacts with the cloud API in a blocking manner.</dd>
 <dd>
 This class is threadsafe. </dd></dl>
-</div><h2 class="groupheader">Member Function Documentation</h2>
+</div><h2 class="groupheader">Member Typedef Documentation</h2>
+<a id="a47709e47fa35e721a6e7bba6fdd4ee9d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a47709e47fa35e721a6e7bba6fdd4ee9d">&#9670;&nbsp;</a></span>NewTokenCallback</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">typedef std::function&lt;void(const std::string&amp; auth, const std::string&amp; <a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#ab37e90c7c0a9a1ba3fbf66e2ce8d11f5">refresh</a>)&gt; <a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a47709e47fa35e721a6e7bba6fdd4ee9d">botlink::Public::BotlinkApi::NewTokenCallback</a></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Type of function called when new tokens are available. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">auth</td><td>The new auth token </td></tr>
+    <tr><td class="paramname">refresh</td><td>The new refresh token </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<h2 class="groupheader">Member Function Documentation</h2>
 <a id="acaa00003e582affd11a36a40ce9b1180"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acaa00003e582affd11a36a40ce9b1180">&#9670;&nbsp;</a></span>deregisterXrd()</h2>
 
@@ -454,6 +482,33 @@ This class is threadsafe. </dd></dl>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>bool true if successful </dd></dl>
+
+</div>
+</div>
+<a id="a722e5d5df47399b08ca4561a2bf5d41b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a722e5d5df47399b08ca4561a2bf5d41b">&#9670;&nbsp;</a></span>setNewTokenCallback()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void botlink::Public::BotlinkApi::setNewTokenCallback </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="classbotlink_1_1Public_1_1BotlinkApi.html#a47709e47fa35e721a6e7bba6fdd4ee9d">NewTokenCallback</a> &amp;&#160;</td>
+          <td class="paramname"><em>callback</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Set a callback to be called when new tokens are available. </p>
+<dl class="section note"><dt>Note</dt><dd>When calling this multiple times, only the callback from the last call to this member function is used.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">callback</td><td>The callback to call </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

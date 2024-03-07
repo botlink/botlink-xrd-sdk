@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['videoconfigcallback_75',['VideoConfigCallback',['../classbotlink_1_1Public_1_1XrdConnection.html#a70b5dfd277f1c511bafa70ba0acc1426',1,'botlink::Public::XrdConnection']]]
+  ['logmessagefn_117',['LogMessageFn',['../classbotlink_1_1Public_1_1XrdConnection.html#a0f0d5a7db0525a19aa3b228957396e8e',1,'botlink::Public::XrdConnection']]]
 ];

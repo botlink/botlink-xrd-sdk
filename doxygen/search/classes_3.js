@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['videoconfig_46',['VideoConfig',['../structbotlink_1_1Public_1_1VideoConfig.html',1,'botlink::Public']]]
+  ['kvserror_70',['KvsError',['../classbotlink_1_1Public_1_1exception_1_1KvsError.html',1,'botlink::Public::exception']]]
 ];

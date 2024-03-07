@@ -1,4 +1,8 @@
 var searchData=
 [
-  ['queuemessage_24',['queueMessage',['../classbotlink_1_1unsupported_1_1BinaryLogger.html#accdcc4bea3ed63dc0fe3d413a261035b',1,'botlink::unsupported::BinaryLogger']]]
+  ['oncellsignalinfo_27',['onCellSignalInfo',['../classbotlink_1_1Public_1_1XrdConnection.html#ac4648809c275fc5e889202d5bb131cc9',1,'botlink::Public::XrdConnection']]],
+  ['onconnectionstatechange_28',['onConnectionStateChange',['../classbotlink_1_1Public_1_1XrdConnection.html#a94eb5b698057fed04fd6a7a6e85d0162',1,'botlink::Public::XrdConnection']]],
+  ['onpingmessageresponse_29',['onPingMessageResponse',['../classbotlink_1_1Public_1_1XrdConnection.html#a24f3837e36ec5cf609ffd5cec52ec06b',1,'botlink::Public::XrdConnection']]],
+  ['onvideoconfigreply_30',['onVideoConfigReply',['../classbotlink_1_1Public_1_1XrdConnection.html#ae03f935725b53b013551e98bc1b5fc40',1,'botlink::Public::XrdConnection']]],
+  ['open_31',['open',['../classbotlink_1_1Public_1_1XrdConnection.html#aa62b58426e218906534b5cfe48572ae5',1,'botlink::Public::XrdConnection']]]
 ];

@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['onvideoconfigreply_64',['onVideoConfigReply',['../classbotlink_1_1Public_1_1XrdConnection.html#ae03f935725b53b013551e98bc1b5fc40',1,'botlink::Public::XrdConnection']]],
-  ['open_65',['open',['../classbotlink_1_1Public_1_1XrdConnection.html#a232d83682370be7d5dcbae25e958918e',1,'botlink::Public::XrdConnection']]]
+  ['pausevideo_97',['pauseVideo',['../classbotlink_1_1Public_1_1XrdConnection.html#acbf7bb85b2a59661531b99c30b375722',1,'botlink::Public::XrdConnection']]],
+  ['pingxrd_98',['pingXrd',['../classbotlink_1_1Public_1_1XrdConnection.html#ac57f778fd9fca9bec4f7fc82c20b9a4e',1,'botlink::Public::XrdConnection']]]
 ];

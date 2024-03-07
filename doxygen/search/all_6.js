@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['isconnected_16',['isConnected',['../classbotlink_1_1Public_1_1XrdConnection.html#abd33ca1bf28577ed51c8ff391ccf773b',1,'botlink::Public::XrdConnection']]]
+  ['jitter_19',['jitter',['../structbotlink_1_1Public_1_1PingResponse.html#a61165a3cccb10ab416ead6c9b678ec69',1,'botlink::Public::PingResponse']]]
 ];

@@ -74,6 +74,7 @@ $(function() {
 <div class="textblock"><code>#include &lt;cstdint&gt;</code><br />
 <code>#include &lt;future&gt;</code><br />
 <code>#include &lt;memory&gt;</code><br />
+<code>#include &lt;optional&gt;</code><br />
 <code>#include &lt;string&gt;</code><br />
 <code>#include &lt;thread&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
@@ -90,6 +91,21 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structbotlink_1_1Public_1_1VideoConfig.html">botlink::Public::VideoConfig</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">XRD video stream configuration.  <a href="structbotlink_1_1Public_1_1VideoConfig.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structbotlink_1_1Public_1_1SignalInfo2g.html">botlink::Public::SignalInfo2g</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">2G cell signal info  <a href="structbotlink_1_1Public_1_1SignalInfo2g.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structbotlink_1_1Public_1_1SignalInfo3g.html">botlink::Public::SignalInfo3g</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">3G cell signal info  <a href="structbotlink_1_1Public_1_1SignalInfo3g.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structbotlink_1_1Public_1_1SignalInfoLte.html">botlink::Public::SignalInfoLte</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">LTE cell signal info.  <a href="structbotlink_1_1Public_1_1SignalInfoLte.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structbotlink_1_1Public_1_1CellSignalInfo.html">botlink::Public::CellSignalInfo</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cell signal info from the XRD.  <a href="structbotlink_1_1Public_1_1CellSignalInfo.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structbotlink_1_1Public_1_1PingResponse.html">botlink::Public::PingResponse</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">An XRD's response to a ping message.  <a href="structbotlink_1_1Public_1_1PingResponse.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classbotlink_1_1Public_1_1XrdConnection.html">botlink::Public::XrdConnection</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A class used to establish a connection to an XRD.  <a href="classbotlink_1_1Public_1_1XrdConnection.html#details">More...</a><br /></td></tr>
@@ -118,12 +134,24 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
 Enumerations</h2></td></tr>
+<tr class="memitem:adc7dae7513f2702781a011b09d105427"><td class="memItemLeft" align="right" valign="top"><a id="adc7dae7513f2702781a011b09d105427"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="api_8h.html#adc7dae7513f2702781a011b09d105427">botlink::Public::XrdConnectionState</a> { <b>NotConnected</b>
+, <b>Connecting</b>
+, <b>Connected</b>
+ }</td></tr>
+<tr class="memdesc:adc7dae7513f2702781a011b09d105427"><td class="mdescLeft">&#160;</td><td class="mdescRight">State of the connection to the XRD. <br /></td></tr>
+<tr class="separator:adc7dae7513f2702781a011b09d105427"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad458e9aa9882f177ddb7358082e8bd77"><td class="memItemLeft" align="right" valign="top"><a id="ad458e9aa9882f177ddb7358082e8bd77"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="api_8h.html#ad458e9aa9882f177ddb7358082e8bd77">botlink::Public::VideoCodec</a> { <b>Unknown</b>
 , <b>H264</b>
 , <b>H265</b>
  }</td></tr>
 <tr class="memdesc:ad458e9aa9882f177ddb7358082e8bd77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Video codecs supported by the XRD. <br /></td></tr>
 <tr class="separator:ad458e9aa9882f177ddb7358082e8bd77"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9918a8195e166fd69d1789d06b0bd8a6"><td class="memItemLeft" align="right" valign="top"><a id="a9918a8195e166fd69d1789d06b0bd8a6"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="api_8h.html#a9918a8195e166fd69d1789d06b0bd8a6">botlink::Public::VideoState</a> { <b>Unknown</b>
+, <b>Paused</b>
+, <b>Playing</b>
+ }</td></tr>
+<tr class="memdesc:a9918a8195e166fd69d1789d06b0bd8a6"><td class="mdescLeft">&#160;</td><td class="mdescRight">State of the video stream from the XRD. <br /></td></tr>
+<tr class="separator:a9918a8195e166fd69d1789d06b0bd8a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a02e2b89ae0b5b09117357d1b6f4dbed2"><td class="memItemLeft" align="right" valign="top"><a id="a02e2b89ae0b5b09117357d1b6f4dbed2"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="api_8h.html#a02e2b89ae0b5b09117357d1b6f4dbed2">botlink::Public::MessageSource</a> { <b>NotDefined</b>
 , <b>FromXrd</b>
 , <b>ToXrd</b>

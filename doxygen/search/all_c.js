@@ -1,6 +1,7 @@
 var searchData=
 [
-  ['reconnect_25',['reconnect',['../classbotlink_1_1Public_1_1XrdConnection.html#a7c02218aa1e4674e8a8383d00a19d065',1,'botlink::Public::XrdConnection']]],
-  ['refresh_26',['refresh',['../classbotlink_1_1Public_1_1BotlinkApi.html#ab37e90c7c0a9a1ba3fbf66e2ce8d11f5',1,'botlink::Public::BotlinkApi']]],
-  ['registerxrd_27',['registerXrd',['../classbotlink_1_1Public_1_1BotlinkApi.html#a73e54b3c407cedb8f541b056b402824a',1,'botlink::Public::BotlinkApi']]]
+  ['pausevideo_32',['pauseVideo',['../classbotlink_1_1Public_1_1XrdConnection.html#acbf7bb85b2a59661531b99c30b375722',1,'botlink::Public::XrdConnection']]],
+  ['pingresponse_33',['PingResponse',['../structbotlink_1_1Public_1_1PingResponse.html',1,'botlink::Public']]],
+  ['pingresponsecallback_34',['PingResponseCallback',['../classbotlink_1_1Public_1_1XrdConnection.html#af678f21ffaf8d0f612768fbd17ca722f',1,'botlink::Public::XrdConnection']]],
+  ['pingxrd_35',['pingXrd',['../classbotlink_1_1Public_1_1XrdConnection.html#ac57f778fd9fca9bec4f7fc82c20b9a4e',1,'botlink::Public::XrdConnection']]]
 ];
