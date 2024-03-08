@@ -2,3 +2,5 @@ node_modules/
 tmp/
 lib/binding/
 .sdkpath
+build/
+__pycache__/

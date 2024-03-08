@@ -21,7 +21,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 require("dotenv").config();
 const udp = require("dgram");
-const { BotlinkApi, XrdConnection, XrdConnectionEvents, XrdConnectionStatus } = require('botlink-xrd-sdk')
+const { BotlinkApi, XrdConnection, XrdConnectionEvents, XrdConnectionStatus, XrdVideoConfig } = require('botlink-xrd-sdk')
 
 var server;
 
@@ -79,10 +79,21 @@ function sleep(ms) {
   const bindAddr = process.env.BINDADDR || '127.0.0.1';
   const writePort = process.env.WRITEPORT || 14550;
   const gcsAddr = process.env.WRITEADDR || "127.0.0.1";
+  const videoPort = process.env.VIDEOPORT || 5600;
+  const videoAddress = process.env.VIDEOADDRESS || "127.0.0.1";
+  const videoFrameRate = process.env.FrameRate || 24;
+  let videoRes = process.env.VIDEORESOLUTION || "1080";
+  let videoCodec = process.env.VIDEOCODEC || "OFF";
+
+  videoRes = videoRes.toUpperCase()
+  videoCodec = videoCodec.toUpperCase()
+
+  const videoEnabled = ( ['H265', 'H264'].includes( videoCodec ) && videoPort < 2**16-1 && videoPort > 0 );
 
   xrdConnection = new XrdConnection(api, selectedXrd)
 
   let xrdName = selectedXrd.name || selectedXrd.emei
+  console.log("Selected XRD", xrdName)
 
   xrdConnection.on(XrdConnectionEvents.ConnectionStatus, async (status) => {
     if (status === XrdConnectionStatus.Connected) {
@@ -102,18 +113,25 @@ function sleep(ms) {
 
           server.on("message", (message, rinfo) => {
             connected = true
-            console.log("From GCS:", Buffer.from(message).toString("hex"));
+            // Received MAVLink frame from Ground Station
+            // console.log("From GCS:", Buffer.from(message).toString("hex"));
             xrdConnection.sendAutopilotMessage(message);
           });
 
           xrdConnection.on(XrdConnectionEvents.AutopilotMessage, xrdData => {
-            console.log("From XRD:", Buffer.from(xrdData).toString("hex"));
+            // Received MAVLink from from XRD
+            // console.log("From XRD:", Buffer.from(xrdData).toString("hex"));
             try{
               server.send(xrdData, writePort, gcsAddr);
             } catch(error) {
               console.log(`error on autopilot message ${error}`)
             }
           })
+
+          xrdConnection.on(XrdConnectionEvents.VideoConfig, xrdData => {
+            console.log("Video Config Changed:", xrdData)
+          })
+          xrdConnection.pingXrd()
         });
       } catch (error) {
         console.log(`UDP bind exception : "${error}"`)
@@ -125,7 +143,31 @@ function sleep(ms) {
     }
   })
 
-  xrdConnection.openConnection(60)
+  if (xrdConnection.addVideoTrack()){
+    const connection = await xrdConnection.openConnection(60)
+    if (connection === true && videoEnabled === true){
+      //const forwarding = xrdConnection.setVideoForwardPort(Number(videoPort))
+      const forwarding = xrdConnection.setVideoForwardPort(Number(videoPort), videoAddress)
+
+      // See https://botlink.github.io/botlink-xrd-sdk/typedoc/interfaces/XrdVideoConfig.html
+      // Set state to 'Paused' to pause video, 'Playing' to resume
+      // The XRD has a single hardware encoder; pausing will pause for all viewers.
+      // Changing framerate or resolution will change for all viewers.
+      const videoStarted = xrdConnection.setVideoConfig({
+        "codec": videoCodec,
+        "framerate": videoFrameRate,
+        "resolution": videoRes,
+        "state": "Playing"
+      })
+      if (videoStarted){
+        console.log('Video started sucessfully.')
+      }
+      if (forwarding){
+        console.log(`Sending UDP ${videoCodec} stream to ${videoAddress}:${videoPort}`)
+      }
+    }
+  }
+
 
 
 })().catch(error => {

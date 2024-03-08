@@ -4,6 +4,7 @@
 #include <ws2tcpip.h>
 #else
 #include <unistd.h>
+#include <cstdio>
 #endif
 
 namespace botlink {
@@ -83,6 +84,26 @@ int Forwarder::getPort() const
     }
 
     return ntohs(static_cast<unsigned short>(port));
+}
+
+void Forwarder::setAddr(const char* addr)
+{
+    std::lock_guard<std::mutex> lock(_mutex);
+    (void)addr;
+    if (inet_pton(AF_INET, addr, &_sockaddr.sin_addr) == 0) {
+        fprintf(stderr, "Failed to set address for UDP socket\n");
+    }
+}
+
+char* Forwarder::getAddr() const
+{
+    char* addr;
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        addr = inet_ntoa(_sockaddr.sin_addr);
+    }
+
+    return addr;
 }
 
 bool Forwarder::forward(const uint8_t* data, int length)
